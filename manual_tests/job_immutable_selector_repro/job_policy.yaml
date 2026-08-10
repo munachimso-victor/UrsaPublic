@@ -1,0 +1,14 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-job-immutable-selector-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-job-template
+    - ursa-namespace-template

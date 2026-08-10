@@ -1,0 +1,18 @@
+# Exact BindingPolicy Ursa applies when dockerconfigjson fails (policies.yaml doc 1).
+# - Same metadata.name as engine.py / --run-suite
+# - Single merged downsync block (no statusCollectors split)
+# Source: tests/test_2026-06-25_00-27/run_ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template/policies.yaml
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-dockerconfigjsonsecret
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+    - ursa-namespace-template

@@ -1,0 +1,242 @@
+Manual repro: PVC volumeName null / empty-string → immutable fight → hub stops tracking
+========================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/pvc_volumename_repro/
+
+
+Goal
+----
+Reproduce the PVC apply failure where:
+
+  - WDS PVC is created with volumeName: null OR volumeName: ""
+  - BindingPolicy downsyncs PVC (+ prebound PV via claimRef) to the edge
+  - Edge PVC binds; controller fills volumeName = ursa-csipv-template
+  - Work agent re-applies WDS desired state (volumeName null / "")
+  - Klusterlet apply fails: Forbidden: spec is immutable after creation
+  - ManifestWork status shows AppliedManifestWorkFailed with a diff like:
+      - "VolumeName": "ursa-csipv-template",
+      + "VolumeName": "",
+  - After that failure, the hub stops tracking the PVC (labels no longer
+    downsync). Other objects in the same BindingPolicy (e.g. StorageClass)
+    can still update.
+
+Ursa automated hits (same mechanism):
+  tests/2026-07-26_shard5/run_ursa-bp-pvc__pert__reset_always/ursa-csipv-template/
+    testcase_001_ursa-bp-pvc_null_ursa-csipv-template.txt
+    testcase_003_ursa-bp-pvc_empty_string_ursa-csipv-template.txt
+
+
+How tracking ends on the PVC (step-by-step)
+-------------------------------------------
+  1. Desired state on WDS
+     Apply seed with PVC.spec.volumeName: null  (scenario A)
+     or PVC.spec.volumeName: ""               (scenario B).
+     PV has claimRef → this PVC (static / prebind pattern).
+     storageClassName is set to ursa-storageclass-template on both
+     (so this is NOT the storageClassName=null bug).
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Namespace, StorageClass, PersistentVolume, PersistentVolumeClaim.
+
+  3. KubeStellar creates ManifestWorks on ITS (ns=edge-*).
+     Work agent on the spoke applies the wrapped manifests.
+
+  4. Spoke PVC is created, then the PV binder fills
+     PVC.spec.volumeName = "ursa-csipv-template" (immutable once bound).
+     Edge live object now differs from WDS desired (null / "").
+
+  5. Work agent keeps trying to apply WDS desired onto the spoke.
+     API server rejects the volumeName change:
+       Forbidden: spec is immutable after creation
+       except resources.requests and volumeAttributesClassName for bound claims
+
+  6. ManifestWork condition Applied=False (AppliedManifestWorkFailed).
+     resourceStatus shows the VolumeName diff (edge has the PV name;
+     desired is empty string — null often serializes the same way).
+
+  7. Hub stops tracking that PVC for further updates:
+     patching a label on WDS PVC does not appear on the edge PVC;
+     edge PVC resourceVersion stays put. Sibling objects (StorageClass)
+     in the same policy still track — failure is per ManifestWork /
+     per object, not a total BindingPolicy death.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                              (this guide)
+  install_requirements.sh                (host prereqs: docker, kubectl, helm, …)
+  setup_kubestellar.sh                   (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+  fix-klusterlet-rbac.yaml               (cluster-scoped PV/SC downsync on edges)
+  pvc_volumeName_null.yaml               (scenario A: volumeName: null)
+  pvc_volumeName_empty.yaml              (scenario B: volumeName: "")
+  pvc_policy.yaml                        (BindingPolicy for edge-1 / edge-2)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/pvc_volumename_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/pvc_volumename_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/pvc_volumename_repro
+
+  # Clean slate between scenarios (see bottom of this file).
+
+  # --- Scenario A: volumeName: null ---
+  kubectl --context wds1 apply -f pvc_volumeName_null.yaml
+  kubectl --context wds1 apply -f pvc_policy.yaml
+
+  # --- Scenario B: volumeName: "" (empty string) ---
+  # (after clean slate)
+  kubectl --context wds1 apply -f pvc_volumeName_empty.yaml
+  kubectl --context wds1 apply -f pvc_policy.yaml
+
+  # Optional: confirm WDS last-applied shows null or ""
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | \
+    grep -A2 last-applied-configuration
+
+  sleep 60
+
+
+Step 4 — Verify the apply failure
+---------------------------------
+  kubectl --context its1 -n edge-1 get manifestworks
+
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B5 -A80 'kind: PersistentVolumeClaim'
+
+  SUCCESS CRITERIA:
+    Applied=False, reason=AppliedManifestWorkFailed
+    message contains:
+      Forbidden: spec is immutable after creation
+      - "VolumeName": "ursa-csipv-template",
+      + "VolumeName": "",
+
+  NOTE: WDS may store volumeName: null while the status diff shows "" —
+  both scenarios collide with the bound edge value the same way.
+
+
+Step 5 — Verify hub stops tracking the PVC
+------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # --- 5a. StorageClass (healthy downsync; label should still propagate) ---
+
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+
+  kubectl --context wds1 label storageclass ursa-storageclass-template \
+    repro-sc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+
+  # --- 5b. PVC (failed ManifestWork; hub stops tracking) ---
+
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+
+  kubectl --context wds1 label pvc ursa-pvc-template -n ursa-namespace-template \
+    repro-pvc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+
+  SUCCESS CRITERIA (5a — StorageClass):
+    WDS StorageClass has label repro-sc-after-failure=updated
+    Edge StorageClass also has repro-sc-after-failure=updated
+
+  SUCCESS CRITERIA (5b — PVC):
+    WDS PVC has label repro-pvc-after-failure=updated
+    Edge PVC does NOT have repro-pvc-after-failure=updated
+    Edge PVC resourceVersion unchanged after the WDS label patch
+    ManifestWork PVC entry still Applied=False
+
+
+Clean slate (re-run / switch scenario)
+--------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-pvc-volumename-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete pv ursa-csipv-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete sc ursa-storageclass-template --ignore-not-found
+  done
+
+  kubectl --context wds1 delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+  kubectl --context wds1 delete pv ursa-csipv-template --ignore-not-found
+  kubectl --context wds1 delete sc ursa-storageclass-template --ignore-not-found
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex
+  - Apply manifests from the Ursa repo root (use this folder)
+  - Apply fix-klusterlet-rbac.yaml on WDS instead of edges
+  - Use clusteradm v1.x with KubeStellar 0.29 hub
+  - Confuse this with pvc_null_storageclass_repro (that one uses
+    storageClassName: null; this one keeps storageClassName set)
+
+
+Expected behaviour
+------------------
+  1. Hub and edge should not fight over a field the spoke binder filled in
+     (volumeName after bind). Desired state on WDS should either omit an
+     immutable late-bound field or learn the effective edge value.
+
+  2. Partial tracking after an apply failure would be preferable: keep
+     downsyncing mutable fields (labels, annotations) even when volumeName
+     cannot be reconciled. Losing all tracking for one immutable field
+     leaves the spoke object unmanaged.

@@ -1,0 +1,927 @@
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ chmod +x install_requirements.sh
+  ./install_requirements.sh
+==> Manual repro directory: /users/mvn27/Ursa/manual_tests/pvc_volumename_repro
+==> Detected platform: linux/amd64
+==> Installing apt packages (curl, docker.io)...
+==> Docker OK: 29.1.3
+==> kubectl already installed: Client Version: v1.36.3
+==> helm already installed: v3.21.3+g1ad6e68
+==> kind already installed: kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64
+==> kflex already installed: WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z
+Could not connect to a Kubernetes cluster: error building kubeconfig: stat /users/mvn27/.kube/config: no such file or directory
+==> clusteradm already installed: client                version :v0.10.1-0-g18a991c
+==> Raising inotify limits...
+==> Running KubeStellar v0.29.0 pre-req check...
+✔ KubeFlex (Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z)
+✔ OCM CLI (:v0.10.1-0-g18a991c)
+✔ Helm (v3.21.3)
+✔ helm can fetch public charts
+✔ kubectl (v1.36.3)
+✔ Docker (Docker version 29.1.3, build 29.1.3-0ubuntu3~22.04.2)
+✔ Kind (kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64)
+✔ fs.inotify.max_user_watches is 524288
+✔ fs.inotify.max_user_instances is 8192
+==> KubeStellar pre-req check passed.
+
+================================================================================
+Host prerequisites installed.
+================================================================================
+
+  If docker group was just added: newgrp docker  (or log out/in)
+
+  Verify:
+    docker info
+    kubectl version --client
+    helm version
+    kind version
+    kflex version
+    clusteradm version
+
+  Next:
+    export KUBECONFIG=~/.kube/kubeflex
+    ./setup_kubestellar.sh
+
+================================================================================
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ ./setup_kubestellar.sh
+Using Workload Prefix: edge
+Using Host Cluster: kubeflex
+Using Host Port: 9443
+Using Kubeconfig Path: /users/mvn27/.kube/kubeflex
+==================================================
+CLEANUP INITIATED: Wiping clusters and contexts...
+Target Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Deleting Host Cluster: kubeflex...
+Deleting cluster "kubeflex" ...
+Deleted nodes: ["kubeflex-control-plane"]
+Deleting Workload Cluster: edge-1...
+Deleting cluster "edge-1" ...
+Deleted nodes: ["edge-1-control-plane"]
+Deleting Workload Cluster: edge-2...
+Deleting cluster "edge-2" ...
+Deleted nodes: ["edge-2-control-plane"]
+Deleting Workload Cluster: edge-3...
+Deleting cluster "edge-3" ...
+Deleted nodes: ["edge-3-control-plane"]
+Cleaning up KubeStellar contexts...
+Cleanup complete.
+--------------------------------------------------
+==================================================
+Starting KubeStellar Setup Scenario
+Host Cluster: kubeflex
+Member Clusters: edge-1 edge-2 edge-3
+Using Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Creating Kind cluster kubeflex with SSL passthrough...
+Creating "kubeflex" kind cluster with SSL passthrougn and 9443 port mapping...
+No kind clusters found.
+Creating cluster "kubeflex" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kubeflex"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kubeflex
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+Installing an nginx ingress...
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+Patching nginx ingress to enable SSL passthrough...
+deployment.apps/ingress-nginx-controller patched
+Waiting for nginx ingress with SSL passthrough to be ready...
+Waiting for nginx ingress controller deployment to be rolled out...
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "ingress-nginx-controller" successfully rolled out
+Waiting for nginx ingress controller pod to be ready...
+pod/ingress-nginx-controller-6856c8b665-qcj6l condition met
+Setting context to "kind-kubeflex"...
+Switched to context "kind-kubeflex".
+--------------------------------------------------
+Installing KubeStellar Core Helm Chart (v0.29.0)...
+Release "ks-core" does not exist. Installing it now.
+Pulled: ghcr.io/kubestellar/kubestellar/core-chart:0.29.0
+Digest: sha256:3b9550f95e99a4ed2361c53b045f7198d12c4035ec58bf7d5c83c74f7d7e3c10
+NAME: ks-core
+LAST DEPLOYED: Tue Jul 28 00:30:20 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+For your convenience you will probably want to add contexts to your
+kubeconfig named after the non-host-type control planes (WDSes and
+ITSes) that you just created (a host-type control plane is just an
+alias for the KubeFlex hosting cluster). You can do that with the
+following `kflex` commands; each creates a context and makes it the
+current one. See
+https://github.com/kubestellar/kubestellar/blob/0.29.0/docs/content/direct/core-chart.md#kubeconfig-files-and-contexts-for-control-planes
+for a way to do this without using `kflex`.
+Start by setting your current kubeconfig context to the one you used
+when installing this chart.
+
+kubectl config use-context $the_one_where_you_installed_this_chart
+kflex ctx --set-current-for-hosting # make sure the KubeFlex CLI's hidden state is right for what the Helm chart just did
+
+kflex ctx --overwrite-existing-context its1
+kflex ctx --overwrite-existing-context wds1
+
+Finally, you can use `kflex ctx` to switch back to the kubeconfig
+context for your KubeFlex hosting cluster.
+--------------------------------------------------
+Configuring KubeFlex contexts...
+Switched to context "kind-kubeflex".
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Checking for saved hosting cluster context...
+✔ Switching to hosting cluster context...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context its1 not found (context its1 not found), trying to load from server...
+✔ Switching to context its1...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context wds1 not found (context wds1 not found), trying to load from server...
+✔ Switching to context wds1...
+--------------------------------------------------
+Waiting for ITS (its1) to be fully initialized...
+Waiting for its-hub-init hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for its-hub-init job completion...
+job.batch/its-hub-init condition met
+Waiting for install-status-addon hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for install-status-addon job completion...
+job.batch/install-status-addon condition met
+ITS initialization complete.
+--------------------------------------------------
+Creating and Registering Workload Clusters...
+Processing edge-1...
+Creating cluster "edge-1" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-1 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-1" renamed to "edge-1".
+Registering edge-1 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTAwLCJpYXQiOjE3ODUyMjA1MDAsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTAwLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.O-5C13nz5ADv5WCjekeLIs0BUbpHNCjx2iCX1pl9Z-rxV3_IQwXGr-mFadFp_91zS5rWmdKbpYIRJqUhp5KAdc1Lo5DV-pS5UozHS3ElBgNGVL891CZR6f8T34J6uQILbFPpWfXfnWzr28wRzgKB9KD81jmIHqyjZ_wd6O_z02ElOe0zNC2wbFYSC8gqkb-zJTbsiOeUjL0Z0yV5q0Dj6iG46SRpXONsCBD2D0kj6zqmtD5vo4hxgJv3hFn_3crTY0GwRuA_9_-JMYlCywKzgSTsxL20l_pjugG4hTN6FeHpM2gGdlpjxYPCCmiw2GzeCRsRWR2hsTQjgT0IqzrI5g --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-1 --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-1
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-2...
+Creating cluster "edge-2" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-2 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-2" renamed to "edge-2".
+Registering edge-2 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTc0LCJpYXQiOjE3ODUyMjA1NzQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTc0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.D1czrD5-KDhb-AJZ8CYn-oY-Kw5EeNZQJdpifKORC0cXZ1cO8xJR1H_nwYX6ppzNYmGStapahx3Rf6KPyNKd56c9NyeNudSVmFF6Cjns6ECMqC8FmmigiY1ScVr8n3w7-4AcrGMuVZtIj6YpGf9vVMv7LUL1J-7547WXdFtM_aum5O7y65vb6NnXlWGWltCG714K4uJV_Md1ugRTLp8oWum_xXvONdZZhfzyTFD-nDMLET3VpyykBDyGg0kSu-w4ceJ7uKO6EK91LnxE_pyNQ0wje8TP4RGQfUctCjCsH_P5MVO_Z6rm3p-xGVz1B2P1pEugAv_grKBnP72e2u4KqA --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-2 --context edge-2 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-2
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-3...
+Creating cluster "edge-3" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-3"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-3 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Context "kind-edge-3" renamed to "edge-3".
+Registering edge-3 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MjU0LCJpYXQiOjE3ODUyMjA2NTQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNjU0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.XZPz64enTWw-CmcqWHr3cmLbyVGdP0k1_EVobV65Qi7JFlTREehOSkQ1RCRWx8LyygyD9OYiZtPeoTVKtZN49gi3naODjiEtOqb0DPVqcVpPb3tIHXtl2OXHfdiJ_rFgNlvDNAu7w6884m9s5KpWd-nAgJGABwXfhnW8VCU-3XpExHrCGmgMLFmqzKDIcKx49tAoVfJCfIDpkRA8ouawQ2ehB2ECO7MQsgzAG1TxsJ4rKqXYL6jHWDl8drioBQA7JMEh_M45BVUqCElSfsyaysqpmt3T-INKx7mKgp22NwairL3GP125ayCH3j7kaRwCe7x86cY64khvBezojWprgg --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-3 --context edge-3 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-3
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+--------------------------------------------------
+Waiting for CSRs to appear in ITS1...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 3 pending CSRs (Need 3)...
+All required CSRs found.
+--------------------------------------------------
+Approving CSRs...
+Starting approve csrs for the cluster edge-1
+CSR edge-1-pxk7s approved
+set hubAcceptsClient to true for managed cluster edge-1
+
+ Your managed cluster edge-1 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-2
+CSR edge-2-rtt9j approved
+set hubAcceptsClient to true for managed cluster edge-2
+
+ Your managed cluster edge-2 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-3
+CSR edge-3-n5jcn approved
+set hubAcceptsClient to true for managed cluster edge-3
+
+ Your managed cluster edge-3 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+--------------------------------------------------
+Verifying and Labeling Clusters...
+NAME     HUB ACCEPTED   MANAGED CLUSTER URLS                JOINED   AVAILABLE   AGE
+edge-1   true           https://edge-1-control-plane:6443                        2m23s
+edge-2   true           https://edge-2-control-plane:6443                        65s
+edge-3   true           https://edge-3-control-plane:6443                        4s
+Labeling edge-1...
+managedcluster.cluster.open-cluster-management.io/edge-1 labeled
+Labeling edge-2...
+managedcluster.cluster.open-cluster-management.io/edge-2 labeled
+Labeling edge-3...
+managedcluster.cluster.open-cluster-management.io/edge-3 labeled
+==================================================
+Setup Complete!
+Configuration saved to: /users/mvn27/.kube/kubeflex
+Contexts available: kind-kubeflex, its1, wds1, wds2, edge-1 edge-2 edge-3
+==================================================
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+kind-kubeflex,: command not found
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl config get-contexts
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$   kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager created
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding created
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager created
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding created
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager created
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding created
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl --context wds1 apply -f pvc_volumeName_null.yaml
+  kubectl --context wds1 apply -f pvc_policy.yaml
+namespace/ursa-namespace-template created
+persistentvolumeclaim/ursa-pvc-template created
+persistentvolume/ursa-csipv-template created
+storageclass.storage.k8s.io/ursa-storageclass-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-pvc-volumename-repro created
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | \
+    grep -A2 last-applied-configuration
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"labels":{"app.kubernetes.io/managed-by":"ursa-testing"},"name":"ursa-pvc-template","namespace":"ursa-namespace-template"},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"1Mi"}},"storageClassName":"ursa-storageclass-template","volumeName":null}}
+  creationTimestamp: "2026-07-28T10:48:11Z"
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl --context its1 -n edge-1 get manifestworks
+
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B5 -A80 'kind: PersistentVolumeClaim'
+NAME                                                                             AGE
+addon-addon-status-deploy-0                                                      4h10m
+54638ba2-e80f-4ae1-acae-24a3e52c22e0-wds1-6b46a201-7636-4acc-99c8-7120f3b393ce   22s
+54638ba2-e80f-4ae1-acae-24a3e52c22e0-wds1-13204987-39c5-45a7-b43c-c9d5ad7cd755   22s
+54638ba2-e80f-4ae1-acae-24a3e52c22e0-wds1-c6d5e7fc-67ce-4f74-889b-95aa0d2fff64   22s
+54638ba2-e80f-4ae1-acae-24a3e52c22e0-wds1-b6297761-5f48-4184-906d-2652318892dc   22s
+          - ReadWriteOnce
+          capacity:
+            storage: 1Mi
+          claimRef:
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            name: ursa-pvc-template
+            namespace: ursa-namespace-template
+          csi:
+            driver: hostpath.csi.k8s.io
+            volumeHandle: ursa-disk-template
+          persistentVolumeReclaimPolicy: Retain
+          storageClassName: ursa-storageclass-template
+          volumeMode: Filesystem
+  status:
+    conditions:
+    - lastTransitionTime: "2026-07-28T10:48:15Z"
+      message: Apply manifest work complete
+      observedGeneration: 1
+      reason: AppliedManifestWorkComplete
+      status: "True"
+      type: Applied
+    - lastTransitionTime: "2026-07-28T10:48:15Z"
+      message: All resources are available
+      observedGeneration: 1
+      reason: ResourcesAvailable
+      status: "True"
+      type: Available
+    resourceStatus:
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-07-28T10:48:15Z"
+          message: Apply manifest complete
+          reason: AppliedManifestComplete
+          status: "True"
+          type: Applied
+        - lastTransitionTime: "2026-07-28T10:48:15Z"
+          message: Resource is available
+          reason: ResourceAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "2026-07-28T10:48:15Z"
+          message: ""
+          reason: NoStatusFeedbackSynced
+          status: "True"
+          type: StatusFeedbackSynced
+        resourceMeta:
+          group: ""
+          kind: PersistentVolume
+          name: ursa-csipv-template
+          namespace: ""
+          ordinal: 0
+          resource: persistentvolumes
+          version: v1
+        statusFeedback: {}
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    annotations:
+      transport.kubestellar.io/originOwnerReferenceBindingGeneration: "1"
+    creationTimestamp: "2026-07-28T10:48:15Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      transport.kubestellar.io/originOwnerReferenceBindingKey: ursa-bp-pvc-volumename-repro
+      transport.kubestellar.io/originWdsName: wds1
+    name: 54638ba2-e80f-4ae1-acae-24a3e52c22e0-wds1-c6d5e7fc-67ce-4f74-889b-95aa0d2fff64
+    namespace: edge-1
+    resourceVersion: "5943"
+    uid: 3b44931c-11c5-4edc-9819-6aaf82a9223f
+  spec:
+    workload:
+      manifests:
+      - allowVolumeExpansion: true
+        apiVersion: storage.k8s.io/v1
+        kind: StorageClass
+        metadata:
+          creationTimestamp: "2026-07-28T10:48:12Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-storageclass-template
+        provisioner: rancher.io/local-path
+        reclaimPolicy: Delete
+        volumeBindingMode: WaitForFirstConsumer
+  status:
+--
+    uid: fb2ff20f-c287-4878-afb7-219733520652
+  spec:
+    workload:
+      manifests:
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          creationTimestamp: "2026-07-28T10:48:11Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-pvc-template
+          namespace: ursa-namespace-template
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Mi
+          storageClassName: ursa-storageclass-template
+          volumeMode: Filesystem
+  status:
+    conditions:
+    - lastTransitionTime: "2026-07-28T10:48:16Z"
+      message: Failed to apply manifest work
+      observedGeneration: 1
+      reason: AppliedManifestWorkFailed
+      status: "False"
+      type: Applied
+    - lastTransitionTime: "2026-07-28T10:48:16Z"
+      message: All resources are available
+      observedGeneration: 1
+      reason: ResourcesAvailable
+      status: "True"
+      type: Available
+    resourceStatus:
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-07-28T10:48:16Z"
+          message: |
+            Failed to apply manifest: PersistentVolumeClaim "ursa-pvc-template" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
+            @@ -9,7 +9,7 @@
+                "storage": "1Mi"
+               }
+              },
+            - "VolumeName": "ursa-csipv-template",
+            + "VolumeName": "",
+              "StorageClassName": "ursa-storageclass-template",
+              "VolumeMode": "Filesystem",
+              "DataSource": null,
+          reason: AppliedManifestFailed
+          status: "False"
+          type: Applied
+        - lastTransitionTime: "2026-07-28T10:48:16Z"
+          message: Resource is available
+          reason: ResourceAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "2026-07-28T10:48:16Z"
+          message: ""
+          reason: NoStatusFeedbackSynced
+          status: "True"
+          type: StatusFeedbackSynced
+        resourceMeta:
+          group: ""
+          kind: PersistentVolumeClaim
+          name: ursa-pvc-template
+          namespace: ursa-namespace-template
+          ordinal: 0
+          resource: persistentvolumeclaims
+          version: v1
+        statusFeedback: {}
+kind: List
+metadata:
+  resourceVersion: ""
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ # --- 5a. StorageClass (healthy downsync; label should still propagate) ---
+
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+
+  kubectl --context wds1 label storageclass ursa-storageclass-template \
+    repro-sc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+edge SC resourceVersion=22605
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE     LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   2m33s   app.kubernetes.io/managed-by=ursa-testing
+storageclass.storage.k8s.io/ursa-storageclass-template labeled
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE     LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   3m36s   app.kubernetes.io/managed-by=ursa-testing,repro-sc-after-failure=updated
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE     LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   3m33s   app.kubernetes.io/managed-by=ursa-testing,repro-sc-after-failure=updated
+edge SC resourceVersion=22862
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ # --- 5b. PVC (failed ManifestWork; hub stops tracking) ---
+
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+
+  kubectl --context wds1 label pvc ursa-pvc-template -n ursa-namespace-template \
+    repro-pvc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+edge PVC resourceVersion=22621
+NAME                STATUS   VOLUME                CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Lost     ursa-csipv-template   0                         ursa-storageclass-template   <unset>                 4m30s   app.kubernetes.io/managed-by=ursa-testing
+persistentvolumeclaim/ursa-pvc-template labeled
+NAME                STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Pending                                      ursa-storageclass-template   <unset>                 5m35s   app.kubernetes.io/managed-by=ursa-testing,repro-pvc-after-failure=updated
+NAME                STATUS   VOLUME                CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Lost     ursa-csipv-template   0                         ursa-storageclass-template   <unset>                 5m30s   app.kubernetes.io/managed-by=ursa-testing
+edge PVC resourceVersion=22621
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-pvc-volumename-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete pv ursa-csipv-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete sc ursa-storageclass-template --ignore-not-found
+  done
+
+  kubectl --context wds1 delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+  kubectl --context wds1 delete pv ursa-csipv-template --ignore-not-found
+  kubectl --context wds1 delete sc ursa-storageclass-template --ignore-not-found
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+bindingpolicy.control.kubestellar.io "ursa-bp-pvc-volumename-repro" deleted
+persistentvolumeclaim "ursa-pvc-template" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+persistentvolume "ursa-csipv-template" deleted
+namespace "ursa-namespace-template" deleted
+persistentvolumeclaim "ursa-pvc-template" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+persistentvolume "ursa-csipv-template" deleted
+Warning: short name "sc" could also match lower priority resource statuscollectors.control.kubestellar.io
+storageclass.storage.k8s.io "ursa-storageclass-template" deleted
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$   # --- Scenario B: volumeName: "" (empty string) ---
+  # (after clean slate)
+  kubectl --context wds1 apply -f pvc_volumeName_empty.yaml
+  kubectl --context wds1 apply -f pvc_policy.yaml
+namespace/ursa-namespace-template created
+persistentvolumeclaim/ursa-pvc-template created
+persistentvolume/ursa-csipv-template created
+storageclass.storage.k8s.io/ursa-storageclass-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-pvc-volumename-repro created
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | \
+    grep -A2 last-applied-configuration
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"annotations":{},"labels":{"app.kubernetes.io/managed-by":"ursa-testing"},"name":"ursa-pvc-template","namespace":"ursa-namespace-template"},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"1Mi"}},"storageClassName":"ursa-storageclass-template","volumeName":""}}
+  creationTimestamp: "2026-07-28T10:56:27Z"
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ kubectl --context its1 -n edge-1 get manifestworks
+
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B5 -A80 'kind: PersistentVolumeClaim'
+NAME                                                                             AGE
+addon-addon-status-deploy-0                                                      4h18m
+9b51c40e-b26c-4ce9-8f2c-d3864e640c2c-wds1-5a45ac79-89b6-45e5-b1f6-e6e871dd2098   40s
+9b51c40e-b26c-4ce9-8f2c-d3864e640c2c-wds1-e3960a6a-faff-4602-a183-bda67c6e542c   40s
+9b51c40e-b26c-4ce9-8f2c-d3864e640c2c-wds1-b6c985af-343e-4c48-9c40-ecfe4cdadd31   40s
+9b51c40e-b26c-4ce9-8f2c-d3864e640c2c-wds1-ca4e3516-4dd5-4e51-80ca-56da42cfde80   40s
+          - ReadWriteOnce
+          capacity:
+            storage: 1Mi
+          claimRef:
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            name: ursa-pvc-template
+            namespace: ursa-namespace-template
+          csi:
+            driver: hostpath.csi.k8s.io
+            volumeHandle: ursa-disk-template
+          persistentVolumeReclaimPolicy: Retain
+          storageClassName: ursa-storageclass-template
+          volumeMode: Filesystem
+  status:
+    conditions:
+    - lastTransitionTime: "2026-07-28T10:56:30Z"
+      message: Apply manifest work complete
+      observedGeneration: 1
+      reason: AppliedManifestWorkComplete
+      status: "True"
+      type: Applied
+    - lastTransitionTime: "2026-07-28T10:56:30Z"
+      message: All resources are available
+      observedGeneration: 1
+      reason: ResourcesAvailable
+      status: "True"
+      type: Available
+    resourceStatus:
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: Apply manifest complete
+          reason: AppliedManifestComplete
+          status: "True"
+          type: Applied
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: Resource is available
+          reason: ResourceAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: ""
+          reason: NoStatusFeedbackSynced
+          status: "True"
+          type: StatusFeedbackSynced
+        resourceMeta:
+          group: ""
+          kind: PersistentVolume
+          name: ursa-csipv-template
+          namespace: ""
+          ordinal: 0
+          resource: persistentvolumes
+          version: v1
+        statusFeedback: {}
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    annotations:
+      transport.kubestellar.io/originOwnerReferenceBindingGeneration: "1"
+    creationTimestamp: "2026-07-28T10:56:29Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      transport.kubestellar.io/originOwnerReferenceBindingKey: ursa-bp-pvc-volumename-repro
+      transport.kubestellar.io/originWdsName: wds1
+    name: 9b51c40e-b26c-4ce9-8f2c-d3864e640c2c-wds1-b6c985af-343e-4c48-9c40-ecfe4cdadd31
+    namespace: edge-1
+    resourceVersion: "6213"
+    uid: b52e38a6-a61e-419f-ad8f-a9396ccf46de
+  spec:
+    workload:
+      manifests:
+      - allowVolumeExpansion: true
+        apiVersion: storage.k8s.io/v1
+        kind: StorageClass
+        metadata:
+          creationTimestamp: "2026-07-28T10:56:27Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-storageclass-template
+        provisioner: rancher.io/local-path
+        reclaimPolicy: Delete
+        volumeBindingMode: WaitForFirstConsumer
+  status:
+--
+    uid: 07a7ee19-f7c0-402a-a4c6-dbc7366a7917
+  spec:
+    workload:
+      manifests:
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        metadata:
+          creationTimestamp: "2026-07-28T10:56:27Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-pvc-template
+          namespace: ursa-namespace-template
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Mi
+          storageClassName: ursa-storageclass-template
+          volumeMode: Filesystem
+  status:
+    conditions:
+    - lastTransitionTime: "2026-07-28T10:56:30Z"
+      message: Failed to apply manifest work
+      observedGeneration: 1
+      reason: AppliedManifestWorkFailed
+      status: "False"
+      type: Applied
+    - lastTransitionTime: "2026-07-28T10:56:30Z"
+      message: All resources are available
+      observedGeneration: 1
+      reason: ResourcesAvailable
+      status: "True"
+      type: Available
+    resourceStatus:
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: |
+            Failed to apply manifest: PersistentVolumeClaim "ursa-pvc-template" is invalid: spec: Forbidden: spec is immutable after creation except resources.requests and volumeAttributesClassName for bound claims
+            @@ -9,7 +9,7 @@
+                "storage": "1Mi"
+               }
+              },
+            - "VolumeName": "ursa-csipv-template",
+            + "VolumeName": "",
+              "StorageClassName": "ursa-storageclass-template",
+              "VolumeMode": "Filesystem",
+              "DataSource": null,
+          reason: AppliedManifestFailed
+          status: "False"
+          type: Applied
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: Resource is available
+          reason: ResourceAvailable
+          status: "True"
+          type: Available
+        - lastTransitionTime: "2026-07-28T10:56:30Z"
+          message: ""
+          reason: NoStatusFeedbackSynced
+          status: "True"
+          type: StatusFeedbackSynced
+        resourceMeta:
+          group: ""
+          kind: PersistentVolumeClaim
+          name: ursa-pvc-template
+          namespace: ursa-namespace-template
+          ordinal: 0
+          resource: persistentvolumeclaims
+          version: v1
+        statusFeedback: {}
+kind: List
+metadata:
+  resourceVersion: ""
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+
+  # --- 5a. StorageClass (healthy downsync; label should still propagate) ---
+
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+
+  kubectl --context wds1 label storageclass ursa-storageclass-template \
+    repro-sc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template --show-labels
+  kubectl --context edge-1 get storageclass ursa-storageclass-template \
+    -o jsonpath='edge SC resourceVersion={.metadata.resourceVersion}{"\n"}'
+edge SC resourceVersion=23395
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE   LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   75s   app.kubernetes.io/managed-by=ursa-testing
+storageclass.storage.k8s.io/ursa-storageclass-template labeled
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE     LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   2m19s   app.kubernetes.io/managed-by=ursa-testing,repro-sc-after-failure=updated
+NAME                         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE     LABELS
+ursa-storageclass-template   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   2m16s   app.kubernetes.io/managed-by=ursa-testing,repro-sc-after-failure=updated
+edge SC resourceVersion=23538
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ # --- 5b. PVC (failed ManifestWork; hub stops tracking) ---
+
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+
+  kubectl --context wds1 label pvc ursa-pvc-template -n ursa-namespace-template \
+    repro-pvc-after-failure=updated --overwrite
+
+  sleep 60
+
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template --show-labels
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='edge PVC resourceVersion={.metadata.resourceVersion}{"\n"}'
+edge PVC resourceVersion=23410
+NAME                STATUS   VOLUME                CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Lost     ursa-csipv-template   0                         ursa-storageclass-template   <unset>                 2m38s   app.kubernetes.io/managed-by=ursa-testing
+persistentvolumeclaim/ursa-pvc-template labeled
+NAME                STATUS    VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Pending                                      ursa-storageclass-template   <unset>                 3m41s   app.kubernetes.io/managed-by=ursa-testing,repro-pvc-after-failure=updated
+NAME                STATUS   VOLUME                CAPACITY   ACCESS MODES   STORAGECLASS                 VOLUMEATTRIBUTESCLASS   AGE     LABELS
+ursa-pvc-template   Lost     ursa-csipv-template   0                         ursa-storageclass-template   <unset>                 3m39s   app.kubernetes.io/managed-by=ursa-testing
+edge PVC resourceVersion=23410
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-07-28_05:09:13
+Checking script dependencies:
+✔ kubectl version v1.36.3 at /usr/local/bin/kubectl
+✔ helm version v3.21.3 at /usr/local/bin/helm
+✔ jq version jq-1.6 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.53.3 at /usr/local/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-bL2j
+Using kubeconfig(s): /users/mvn27/.kube/kubeflex
+Validating contexts(s):
+✔ edge-1
+✔ edge-2
+✔ edge-3 *
+✔ its1
+✔ kind-kubeflex
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-kubeflex
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-kubeflex
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6f8fcc5699-jcfm9, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-kubeflex, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-kubeflex, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5f8bf5476f-nccht namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-fb8f88f89-629nw namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-bL2j/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-bL2j
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ ls
+create-kind-cluster-with-SSL-passthrough.sh  kubestellar-snapshot-nDtM    pvc_volumeName_empty.yaml  setup_kubestellar.sh
+fix-klusterlet-rbac.yaml                     kubestellar-snapshot.tar.gz  pvc_volumeName_null.yaml
+install_requirements.sh                      kubestellar-snapshot-WAry    REPRO.txt
+kubestellar-snapshot-MJCm                    pvc_policy.yaml              sample_log.txt
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$

@@ -1,0 +1,557 @@
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa$ export KUBECONFIG=~/.kube/kubeflex
+cd manual_tests/secret_downsync_repro/dockerconfigjsonsecret
+
+CASE=case1_namespace_only   # or case2_with_configmap | case3_with_pod
+
+./cleanup.sh
+kubectl --context wds1 apply -f "${CASE}/seed.yaml"
+kubectl --context wds1 apply -f "${CASE}/binding-policy.yaml"
+sleep 230
+./verify.sh "${CASE}"
+Deleting BindingPolicies from wds1...
+Deleting workloads from wds1...
+Deleting workloads from edge-1...
+Deleting workloads from edge-2...
+Cleanup issued. Wait ~60s before re-running a case.
+namespace/ursa-namespace-template created
+secret/ursa-dockerconfigjsonsecret-template created
+bindingpolicy.control.kubestellar.io/repro-dockerconfigjson-case1-namespace-only created
+================================================================================
+dockerconfigjson secret downsync verification
+  case=case1_namespace_only
+  KUBECONFIG=/home/mvn27adm/.kube/kubeflex
+  secret=ursa-namespace-template/ursa-dockerconfigjsonsecret-template
+  policy=repro-dockerconfigjson-case1-namespace-only
+================================================================================
+
+---- WDS: namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   3m50s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      3m50s
+
+---- WDS: BindingPolicy ----
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"control.kubestellar.io/v1alpha1","kind":"BindingPolicy","metadata":{"annotations":{},"labels":{"repro.kubestellar.io/case":"dockerconfigjson-case1"},"name":"repro-dockerconfigjson-case1-namespace-only"},"spec":{"clusterSelectors":[{"matchLabels":{"name":"edge-1"}},{"matchLabels":{"name":"edge-2"}}],"downsync":[{"objectNames":["ursa-dockerconfigjsonsecret-template"]},{"objectNames":["ursa-namespace-template"],"statusCollectors":["namespace-details"]}]}}
+  creationTimestamp: "2026-06-25T15:51:13Z"
+  finalizers:
+  - bindingpolicy.kubestellar.io/kscontroller
+  generation: 1
+  labels:
+    repro.kubestellar.io/case: dockerconfigjson-case1
+  name: repro-dockerconfigjson-case1-namespace-only
+  resourceVersion: "6631"
+  uid: 35f3fdfc-f0c9-47a4-a8b7-c80ffbbbf4d3
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+  - objectNames:
+    - ursa-namespace-template
+    statusCollectors:
+    - namespace-details
+status:
+  observedGeneration: 1
+
+---- ITS (edge-1): ManifestWorks ----
+manifestwork.work.open-cluster-management.io/addon-addon-status-deploy-0
+manifestwork.work.open-cluster-management.io/8aaaf46d-4c12-47f3-a53e-3f2a6ae70282-wds1-74c7e4ee-cc88-426a-84f8-f99f1b0deb50
+manifestwork.work.open-cluster-management.io/8aaaf46d-4c12-47f3-a53e-3f2a6ae70282-wds1-77849683-1ad9-4dde-a70a-0faf9f9250dc
+apiVersion: v1
+items:
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    creationTimestamp: "2026-06-25T13:21:05Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      open-cluster-management.io/addon-name: addon-status
+    name: addon-addon-status-deploy-0
+    namespace: edge-1
+    ownerReferences:
+    - apiVersion: addon.open-cluster-management.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ManagedClusterAddOn
+      name: addon-status
+      uid: b0c19062-ea88-4267-9a54-99bc87709add
+    resourceVersion: "1048"
+    uid: 23112079-5e5c-44d1-a2ba-aeeb11f24580
+  spec:
+    manifestConfigs:
+    - feedbackRules:
+      - type: WellKnownStatus
+      resourceIdentifier:
+        group: apps
+        name: status-agent
+        namespace: open-cluster-management-agent-addon
+        resource: deployments
+    workload:
+      manifests:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            app: status-agent
+          name: status-agent
+          namespace: open-cluster-management-agent-addon
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: status-agent
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                profiles.grafana.com/cpu.port: "8082"
+(no manifestworks or no grep matches)
+
+---- Edge (edge-1): namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   3m49s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      3m49s
+
+---- ITS (edge-2): ManifestWorks ----
+manifestwork.work.open-cluster-management.io/addon-addon-status-deploy-0
+manifestwork.work.open-cluster-management.io/8aaaf46d-4c12-47f3-a53e-3f2a6ae70282-wds1-74c7e4ee-cc88-426a-84f8-f99f1b0deb50
+manifestwork.work.open-cluster-management.io/8aaaf46d-4c12-47f3-a53e-3f2a6ae70282-wds1-77849683-1ad9-4dde-a70a-0faf9f9250dc
+apiVersion: v1
+items:
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    creationTimestamp: "2026-06-25T13:21:06Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      open-cluster-management.io/addon-name: addon-status
+    name: addon-addon-status-deploy-0
+    namespace: edge-2
+    ownerReferences:
+    - apiVersion: addon.open-cluster-management.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ManagedClusterAddOn
+      name: addon-status
+      uid: 21ed551b-a48c-4f29-a634-eebffebd6374
+    resourceVersion: "1051"
+    uid: 22263f04-87d3-49ef-ad8d-9b7883d942e6
+  spec:
+    manifestConfigs:
+    - feedbackRules:
+      - type: WellKnownStatus
+      resourceIdentifier:
+        group: apps
+        name: status-agent
+        namespace: open-cluster-management-agent-addon
+        resource: deployments
+    workload:
+      manifests:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            app: status-agent
+          name: status-agent
+          namespace: open-cluster-management-agent-addon
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: status-agent
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                profiles.grafana.com/cpu.port: "8082"
+(no manifestworks or no grep matches)
+
+---- Edge (edge-2): namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   3m50s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      3m50s
+
+---- Summary ----
+  WDS has secret:        1 (1=yes)
+  edge-1 has secret:     1 (1=yes)
+  edge-2 has secret:     1 (1=yes)
+
+Secret synced to both edges — failure NOT reproduced for case case1_namespace_only.
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/secret_downsync_repro/dockerconfigjsonsecret$ export KUBECONFIG=~/.kube/kubeflex
+cd manual_tests/secret_downsync_repro/dockerconfigjsonsecret
+
+CASE=case1_namespace_only   # or case2_with_configmap | case3_with_pod
+
+./cleanup.sh
+kubectl --context wds1 apply -f "${CASE}/seed.yaml"
+kubectl --context wds1 apply -f "${CASE}/binding-policy.yaml"
+sleep 230
+./verify.sh "${CASE}"]
+-bash: cd: manual_tests/secret_downsync_repro/dockerconfigjsonsecret: No such file or directory
+Deleting BindingPolicies from wds1...
+bindingpolicy.control.kubestellar.io "repro-dockerconfigjson-case1-namespace-only" deleted
+Deleting workloads from wds1...
+secret "ursa-dockerconfigjsonsecret-template" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+Deleting workloads from edge-1...
+namespace "ursa-namespace-template" deleted
+Deleting workloads from edge-2...
+namespace "ursa-namespace-template" deleted
+Cleanup issued. Wait ~60s before re-running a case.
+namespace/ursa-namespace-template created
+secret/ursa-dockerconfigjsonsecret-template created
+bindingpolicy.control.kubestellar.io/repro-dockerconfigjson-case1-namespace-only created
+Usage: ./verify.sh [case1_namespace_only|case2_with_configmap|case3_with_pod]
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/secret_downsync_repro/dockerconfigjsonsecret$ ./verify.sh "${CASE}"
+================================================================================
+dockerconfigjson secret downsync verification
+  case=case1_namespace_only
+  KUBECONFIG=/home/mvn27adm/.kube/kubeflex
+  secret=ursa-namespace-template/ursa-dockerconfigjsonsecret-template
+  policy=repro-dockerconfigjson-case1-namespace-only
+================================================================================
+
+---- WDS: namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   5m4s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      5m5s
+
+---- WDS: BindingPolicy ----
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"control.kubestellar.io/v1alpha1","kind":"BindingPolicy","metadata":{"annotations":{},"labels":{"repro.kubestellar.io/case":"dockerconfigjson-case1"},"name":"repro-dockerconfigjson-case1-namespace-only"},"spec":{"clusterSelectors":[{"matchLabels":{"name":"edge-1"}},{"matchLabels":{"name":"edge-2"}}],"downsync":[{"objectNames":["ursa-dockerconfigjsonsecret-template","ursa-namespace-template"]}]}}
+  creationTimestamp: "2026-06-25T16:00:26Z"
+  finalizers:
+  - bindingpolicy.kubestellar.io/kscontroller
+  generation: 1
+  labels:
+    repro.kubestellar.io/case: dockerconfigjson-case1
+  name: repro-dockerconfigjson-case1-namespace-only
+  resourceVersion: "7050"
+  uid: 7835444b-fc13-447b-9a71-7d4c4b612657
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+    - ursa-namespace-template
+status:
+  conditions:
+  - lastTransitionTime: "2026-06-25T16:00:38Z"
+    message: All StatusCollector(s) are available
+    reason: ReconcileSuccess
+    status: "True"
+    type: StatusCollectorsAvailable
+  observedGeneration: 1
+
+---- ITS (edge-1): ManifestWorks ----
+manifestwork.work.open-cluster-management.io/addon-addon-status-deploy-0
+manifestwork.work.open-cluster-management.io/46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241
+manifestwork.work.open-cluster-management.io/46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-0da1719f-39a6-4583-9300-4b937efb0cdd
+apiVersion: v1
+items:
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    creationTimestamp: "2026-06-25T13:21:05Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      open-cluster-management.io/addon-name: addon-status
+    name: addon-addon-status-deploy-0
+    namespace: edge-1
+    ownerReferences:
+    - apiVersion: addon.open-cluster-management.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ManagedClusterAddOn
+      name: addon-status
+      uid: b0c19062-ea88-4267-9a54-99bc87709add
+    resourceVersion: "1048"
+    uid: 23112079-5e5c-44d1-a2ba-aeeb11f24580
+  spec:
+    manifestConfigs:
+    - feedbackRules:
+      - type: WellKnownStatus
+      resourceIdentifier:
+        group: apps
+        name: status-agent
+        namespace: open-cluster-management-agent-addon
+        resource: deployments
+    workload:
+      manifests:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            app: status-agent
+          name: status-agent
+          namespace: open-cluster-management-agent-addon
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: status-agent
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                profiles.grafana.com/cpu.port: "8082"
+(no manifestworks or no grep matches)
+
+---- Edge (edge-1): namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   5m2s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      5m3s
+
+---- ITS (edge-2): ManifestWorks ----
+manifestwork.work.open-cluster-management.io/addon-addon-status-deploy-0
+manifestwork.work.open-cluster-management.io/46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241
+manifestwork.work.open-cluster-management.io/46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-0da1719f-39a6-4583-9300-4b937efb0cdd
+apiVersion: v1
+items:
+- apiVersion: work.open-cluster-management.io/v1
+  kind: ManifestWork
+  metadata:
+    creationTimestamp: "2026-06-25T13:21:06Z"
+    finalizers:
+    - cluster.open-cluster-management.io/manifest-work-cleanup
+    generation: 1
+    labels:
+      open-cluster-management.io/addon-name: addon-status
+    name: addon-addon-status-deploy-0
+    namespace: edge-2
+    ownerReferences:
+    - apiVersion: addon.open-cluster-management.io/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ManagedClusterAddOn
+      name: addon-status
+      uid: 21ed551b-a48c-4f29-a634-eebffebd6374
+    resourceVersion: "1051"
+    uid: 22263f04-87d3-49ef-ad8d-9b7883d942e6
+  spec:
+    manifestConfigs:
+    - feedbackRules:
+      - type: WellKnownStatus
+      resourceIdentifier:
+        group: apps
+        name: status-agent
+        namespace: open-cluster-management-agent-addon
+        resource: deployments
+    workload:
+      manifests:
+      - apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          labels:
+            app: status-agent
+          name: status-agent
+          namespace: open-cluster-management-agent-addon
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: status-agent
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                profiles.grafana.com/cpu.port: "8082"
+(no manifestworks or no grep matches)
+
+---- Edge (edge-2): namespace + secret ----
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   5m5s
+NAME                                   TYPE                             DATA   AGE
+ursa-dockerconfigjsonsecret-template   kubernetes.io/dockerconfigjson   1      5m5s
+
+---- Summary ----
+  WDS has secret:        1 (1=yes)
+  edge-1 has secret:     1 (1=yes)
+  edge-2 has secret:     1 (1=yes)
+
+Secret synced to both edges — failure NOT reproduced for case case1_namespace_only.
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/secret_downsync_repro/dockerconfigjsonsecret$ kubectl --context its1 get manifestwork -n edge-1 \
+  46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241 -o yaml | \
+  grep -E 'kind:|name:|dockerconfigjson|namespace-template'
+kind: ManifestWork
+    transport.kubestellar.io/originOwnerReferenceBindingKey: repro-dockerconfigjson-case1-namespace-only
+  name: 46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241
+      kind: Namespace
+          kubernetes.io/metadata.name: ursa-namespace-template
+          repro.kubestellar.io/case: dockerconfigjson-case1
+        name: ursa-namespace-template
+        kind: Namespace
+        name: ursa-namespace-template
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/secret_downsync_repro/dockerconfigjsonsecret$ kubectl --context its1 get manifestwork -n edge-1   46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241 -o yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    transport.kubestellar.io/originOwnerReferenceBindingGeneration: "1"
+  creationTimestamp: "2026-06-25T16:00:28Z"
+  finalizers:
+  - cluster.open-cluster-management.io/manifest-work-cleanup
+  generation: 1
+  labels:
+    transport.kubestellar.io/originOwnerReferenceBindingKey: repro-dockerconfigjson-case1-namespace-only
+    transport.kubestellar.io/originWdsName: wds1
+  name: 46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-9b8c19b8-21d8-42e7-bee6-3db605e77241
+  namespace: edge-1
+  resourceVersion: "4230"
+  uid: 41a73bf7-1f2b-4557-83a7-d1eebb3c84a3
+spec:
+  workload:
+    manifests:
+    - apiVersion: v1
+      kind: Namespace
+      metadata:
+        creationTimestamp: "2026-06-25T16:00:25Z"
+        labels:
+          app.kubernetes.io/managed-by: ursa-testing
+          kubernetes.io/metadata.name: ursa-namespace-template
+          repro.kubestellar.io/case: dockerconfigjson-case1
+        name: ursa-namespace-template
+      spec:
+        finalizers:
+        - kubernetes
+status:
+  conditions:
+  - lastTransitionTime: "2026-06-25T16:00:28Z"
+    message: Apply manifest work complete
+    observedGeneration: 1
+    reason: AppliedManifestWorkComplete
+    status: "True"
+    type: Applied
+  - lastTransitionTime: "2026-06-25T16:00:28Z"
+    message: All resources are available
+    observedGeneration: 1
+    reason: ResourcesAvailable
+    status: "True"
+    type: Available
+  resourceStatus:
+    manifests:
+    - conditions:
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: Apply manifest complete
+        reason: AppliedManifestComplete
+        status: "True"
+        type: Applied
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: Resource is available
+        reason: ResourceAvailable
+        status: "True"
+        type: Available
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: ""
+        reason: NoStatusFeedbackSynced
+        status: "True"
+        type: StatusFeedbackSynced
+      resourceMeta:
+        group: ""
+        kind: Namespace
+        name: ursa-namespace-template
+        namespace: ""
+        ordinal: 0
+        resource: namespaces
+        version: v1
+      statusFeedback: {}
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/secret_downsync_repro/dockerconfigjsonsecret$ kubectl --context its1 get manifestwork -n edge-1   46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-0da1719f-39a6-4583-9300-4b937efb0cdd -o yaml
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    transport.kubestellar.io/originOwnerReferenceBindingGeneration: "1"
+  creationTimestamp: "2026-06-25T16:00:28Z"
+  finalizers:
+  - cluster.open-cluster-management.io/manifest-work-cleanup
+  generation: 1
+  labels:
+    transport.kubestellar.io/originOwnerReferenceBindingKey: repro-dockerconfigjson-case1-namespace-only
+    transport.kubestellar.io/originWdsName: wds1
+  name: 46d9fb8d-cf43-4130-a6fd-bffa11acdcd0-wds1-0da1719f-39a6-4583-9300-4b937efb0cdd
+  namespace: edge-1
+  resourceVersion: "4235"
+  uid: f51159dd-c83c-417f-87b9-09c1e08833eb
+spec:
+  workload:
+    manifests:
+    - apiVersion: v1
+      data:
+        .dockerconfigjson: eyJhdXRocyI6eyJyZWcuZXhhbXBsZS5jb20iOnsiYXV0aCI6IllXUnRhVzQ2Y0dGemMzZHZjbVE9In19fQ==
+      kind: Secret
+      metadata:
+        creationTimestamp: "2026-06-25T16:00:25Z"
+        labels:
+          app.kubernetes.io/managed-by: ursa-testing
+          repro.kubestellar.io/case: dockerconfigjson-case1
+        name: ursa-dockerconfigjsonsecret-template
+        namespace: ursa-namespace-template
+      type: kubernetes.io/dockerconfigjson
+status:
+  conditions:
+  - lastTransitionTime: "2026-06-25T16:00:28Z"
+    message: Apply manifest work complete
+    observedGeneration: 1
+    reason: AppliedManifestWorkComplete
+    status: "True"
+    type: Applied
+  - lastTransitionTime: "2026-06-25T16:00:28Z"
+    message: All resources are available
+    observedGeneration: 1
+    reason: ResourcesAvailable
+    status: "True"
+    type: Available
+  resourceStatus:
+    manifests:
+    - conditions:
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: Apply manifest complete
+        reason: AppliedManifestComplete
+        status: "True"
+        type: Applied
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: Resource is available
+        reason: ResourceAvailable
+        status: "True"
+        type: Available
+      - lastTransitionTime: "2026-06-25T16:00:28Z"
+        message: ""
+        reason: NoStatusFeedbackSynced
+        status: "True"
+        type: StatusFeedbackSynced
+      resourceMeta:
+        group: ""
+        kind: Secret
+        name: ursa-dockerconfigjsonsecret-template
+        namespace: ursa-namespace-template
+        ordinal: 0
+        resource: secrets
+        version: v1
+      statusFeedback: {}

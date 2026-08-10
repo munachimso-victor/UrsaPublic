@@ -1,0 +1,97 @@
+Manual repro: dockerconfigjson Secret not downsynced (minimal BindingPolicy)
+=============================================================================
+
+All paths relative to:
+
+  manual_tests/secret_downsync_repro/dockerconfigjsonsecret/
+
+Goal
+----
+Reproduce the failure seen in Ursa isolated secret runs:
+  - Secret + Namespace exist on WDS (wds1)
+  - BindingPolicy applied targeting edge-1 / edge-2
+  - No ManifestWork created on ITS for the secret (or namespace)
+  - Secret never appears on edge clusters
+
+Three variants test whether bundling extra objects in the policy fixes downsync:
+  Case 1 — secret + namespace only (minimal isolated slice)
+  Case 2 — secret + namespace + ConfigMap (unrelated companion resource)
+  Case 3 — secret + namespace + Pod that references the secret (imagePullSecrets)
+
+
+Files
+-----
+  REPRO.txt                          (this guide)
+  verify.sh                          (check WDS / ITS / edge for one case)
+  cleanup.sh                         (remove all case workloads + policies)
+  case1_namespace_only/
+    seed.yaml                        (Namespace + Secret)
+    binding-policy.yaml
+  case2_with_configmap/
+    seed.yaml                        (Namespace + Secret + ConfigMap)
+    binding-policy.yaml
+  case3_with_pod/
+    seed.yaml                        (Namespace + Secret + Pod)
+    binding-policy.yaml
+
+
+Prerequisites
+-------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  Cluster with contexts wds1, its1, edge-1, edge-2 (see
+  manual_tests/pvc_null_storageclass_repro/REPRO.txt Step 1–2 for setup).
+
+
+Run one case (repeat for case2 / case3)
+---------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/secret_downsync_repro/dockerconfigjsonsecret
+
+  CASE=case1_namespace_only   # or case2_with_configmap | case3_with_pod
+
+  ./cleanup.sh
+  kubectl --context wds1 apply -f "${CASE}/seed.yaml"
+  kubectl --context wds1 apply -f "${CASE}/binding-policy.yaml"
+
+  echo "Waiting 230s (Ursa engine-equivalent wait)..."
+  sleep 230
+
+  ./verify.sh "${CASE}"
+
+
+Verify manually
+---------------
+  # WDS — objects should exist
+  kubectl --context wds1 get secret ursa-dockerconfigjsonsecret-template \
+    -n ursa-namespace-template
+  kubectl --context wds1 get bindingpolicy -o name | grep repro-dockerconfigjson
+
+  # ITS — look for ManifestWorks for the secret / namespace
+  kubectl --context its1 get manifestworks -n edge-1
+  kubectl --context its1 get manifestworks -n edge-2 -o yaml | \
+    grep -E 'ursa-dockerconfigjsonsecret-template|ursa-namespace-template' || \
+    echo "(no MW entries for secret/namespace — failure pattern)"
+
+  # Edge — secret missing when bug reproduces
+  kubectl --context edge-1 get secret -n ursa-namespace-template
+  kubectl --context edge-2 get secret -n ursa-namespace-template
+
+
+Expected results (from Ursa June 2026 runs)
+-------------------------------------------
+  Case 1 (namespace only):
+    FAIL — secret on WDS, no ManifestWork, not on edge-1/edge-2
+
+  Case 2 (with ConfigMap):
+    Compare — if ConfigMap syncs but Secret does not, binding is object-selective.
+    If both sync, bundling fixes the issue.
+
+  Case 3 (with Pod using imagePullSecrets):
+  Compare — if Pod + namespace sync but Secret does not, same as above.
+    If all sync (as in Ursa serviceaccount / pod bundles), bundling fixes it.
+
+
+Cleanup
+-------
+  ./cleanup.sh

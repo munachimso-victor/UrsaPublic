@@ -1,0 +1,15 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-host-wds-pod-nodename-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-host-wds-pod
+    - ursa-configmap-template
+    - ursa-namespace-template

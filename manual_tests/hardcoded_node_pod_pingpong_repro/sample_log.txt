@@ -1,0 +1,375 @@
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ chmod +x install_requirements.sh
+  ./install_requirements.sh
+==> Manual repro directory: /users/mvn27/Ursa/manual_tests/pvc_volumename_repro
+==> Detected platform: linux/amd64
+==> Installing apt packages (curl, docker.io)...
+==> Docker OK: 29.1.3
+==> kubectl already installed: Client Version: v1.36.3
+==> helm already installed: v3.21.3+g1ad6e68
+==> kind already installed: kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64
+==> kflex already installed: WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z
+Could not connect to a Kubernetes cluster: error building kubeconfig: stat /users/mvn27/.kube/config: no such file or directory
+==> clusteradm already installed: client                version :v0.10.1-0-g18a991c
+==> Raising inotify limits...
+==> Running KubeStellar v0.29.0 pre-req check...
+✔ KubeFlex (Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z)
+✔ OCM CLI (:v0.10.1-0-g18a991c)
+✔ Helm (v3.21.3)
+✔ helm can fetch public charts
+✔ kubectl (v1.36.3)
+✔ Docker (Docker version 29.1.3, build 29.1.3-0ubuntu3~22.04.2)
+✔ Kind (kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64)
+✔ fs.inotify.max_user_watches is 524288
+✔ fs.inotify.max_user_instances is 8192
+==> KubeStellar pre-req check passed.
+
+================================================================================
+Host prerequisites installed.
+================================================================================
+
+  If docker group was just added: newgrp docker  (or log out/in)
+
+  Verify:
+    docker info
+    kubectl version --client
+    helm version
+    kind version
+    kflex version
+    clusteradm version
+
+  Next:
+    export KUBECONFIG=~/.kube/kubeflex
+    ./setup_kubestellar.sh
+
+================================================================================
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ ./setup_kubestellar.sh
+Using Workload Prefix: edge
+Using Host Cluster: kubeflex
+Using Host Port: 9443
+Using Kubeconfig Path: /users/mvn27/.kube/kubeflex
+==================================================
+CLEANUP INITIATED: Wiping clusters and contexts...
+Target Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Deleting Host Cluster: kubeflex...
+Deleting cluster "kubeflex" ...
+Deleted nodes: ["kubeflex-control-plane"]
+Deleting Workload Cluster: edge-1...
+Deleting cluster "edge-1" ...
+Deleted nodes: ["edge-1-control-plane"]
+Deleting Workload Cluster: edge-2...
+Deleting cluster "edge-2" ...
+Deleted nodes: ["edge-2-control-plane"]
+Deleting Workload Cluster: edge-3...
+Deleting cluster "edge-3" ...
+Deleted nodes: ["edge-3-control-plane"]
+Cleaning up KubeStellar contexts...
+Cleanup complete.
+--------------------------------------------------
+==================================================
+Starting KubeStellar Setup Scenario
+Host Cluster: kubeflex
+Member Clusters: edge-1 edge-2 edge-3
+Using Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Creating Kind cluster kubeflex with SSL passthrough...
+Creating "kubeflex" kind cluster with SSL passthrougn and 9443 port mapping...
+No kind clusters found.
+Creating cluster "kubeflex" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kubeflex"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kubeflex
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+Installing an nginx ingress...
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+Patching nginx ingress to enable SSL passthrough...
+deployment.apps/ingress-nginx-controller patched
+Waiting for nginx ingress with SSL passthrough to be ready...
+Waiting for nginx ingress controller deployment to be rolled out...
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "ingress-nginx-controller" successfully rolled out
+Waiting for nginx ingress controller pod to be ready...
+pod/ingress-nginx-controller-6856c8b665-qcj6l condition met
+Setting context to "kind-kubeflex"...
+Switched to context "kind-kubeflex".
+--------------------------------------------------
+Installing KubeStellar Core Helm Chart (v0.29.0)...
+Release "ks-core" does not exist. Installing it now.
+Pulled: ghcr.io/kubestellar/kubestellar/core-chart:0.29.0
+Digest: sha256:3b9550f95e99a4ed2361c53b045f7198d12c4035ec58bf7d5c83c74f7d7e3c10
+NAME: ks-core
+LAST DEPLOYED: Tue Jul 28 00:30:20 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+For your convenience you will probably want to add contexts to your
+kubeconfig named after the non-host-type control planes (WDSes and
+ITSes) that you just created (a host-type control plane is just an
+alias for the KubeFlex hosting cluster). You can do that with the
+following `kflex` commands; each creates a context and makes it the
+current one. See
+https://github.com/kubestellar/kubestellar/blob/0.29.0/docs/content/direct/core-chart.md#kubeconfig-files-and-contexts-for-control-planes
+for a way to do this without using `kflex`.
+Start by setting your current kubeconfig context to the one you used
+when installing this chart.
+
+kubectl config use-context $the_one_where_you_installed_this_chart
+kflex ctx --set-current-for-hosting # make sure the KubeFlex CLI's hidden state is right for what the Helm chart just did
+
+kflex ctx --overwrite-existing-context its1
+kflex ctx --overwrite-existing-context wds1
+
+Finally, you can use `kflex ctx` to switch back to the kubeconfig
+context for your KubeFlex hosting cluster.
+--------------------------------------------------
+Configuring KubeFlex contexts...
+Switched to context "kind-kubeflex".
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Checking for saved hosting cluster context...
+✔ Switching to hosting cluster context...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context its1 not found (context its1 not found), trying to load from server...
+✔ Switching to context its1...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context wds1 not found (context wds1 not found), trying to load from server...
+✔ Switching to context wds1...
+--------------------------------------------------
+Waiting for ITS (its1) to be fully initialized...
+Waiting for its-hub-init hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for its-hub-init job completion...
+job.batch/its-hub-init condition met
+Waiting for install-status-addon hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for install-status-addon job completion...
+job.batch/install-status-addon condition met
+ITS initialization complete.
+--------------------------------------------------
+Creating and Registering Workload Clusters...
+Processing edge-1...
+Creating cluster "edge-1" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-1 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-1" renamed to "edge-1".
+Registering edge-1 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTAwLCJpYXQiOjE3ODUyMjA1MDAsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTAwLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.O-5C13nz5ADv5WCjekeLIs0BUbpHNCjx2iCX1pl9Z-rxV3_IQwXGr-mFadFp_91zS5rWmdKbpYIRJqUhp5KAdc1Lo5DV-pS5UozHS3ElBgNGVL891CZR6f8T34J6uQILbFPpWfXfnWzr28wRzgKB9KD81jmIHqyjZ_wd6O_z02ElOe0zNC2wbFYSC8gqkb-zJTbsiOeUjL0Z0yV5q0Dj6iG46SRpXONsCBD2D0kj6zqmtD5vo4hxgJv3hFn_3crTY0GwRuA_9_-JMYlCywKzgSTsxL20l_pjugG4hTN6FeHpM2gGdlpjxYPCCmiw2GzeCRsRWR2hsTQjgT0IqzrI5g --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-1 --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-1
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-2...
+Creating cluster "edge-2" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-2 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-2" renamed to "edge-2".
+Registering edge-2 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTc0LCJpYXQiOjE3ODUyMjA1NzQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTc0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.D1czrD5-KDhb-AJZ8CYn-oY-Kw5EeNZQJdpifKORC0cXZ1cO8xJR1H_nwYX6ppzNYmGStapahx3Rf6KPyNKd56c9NyeNudSVmFF6Cjns6ECMqC8FmmigiY1ScVr8n3w7-4AcrGMuVZtIj6YpGf9vVMv7LUL1J-7547WXdFtM_aum5O7y65vb6NnXlWGWltCG714K4uJV_Md1ugRTLp8oWum_xXvONdZZhfzyTFD-nDMLET3VpyykBDyGg0kSu-w4ceJ7uKO6EK91LnxE_pyNQ0wje8TP4RGQfUctCjCsH_P5MVO_Z6rm3p-xGVz1B2P1pEugAv_grKBnP72e2u4KqA --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-2 --context edge-2 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-2
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-3...
+Creating cluster "edge-3" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-3"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-3 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Context "kind-edge-3" renamed to "edge-3".
+Registering edge-3 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MjU0LCJpYXQiOjE3ODUyMjA2NTQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNjU0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.XZPz64enTWw-CmcqWHr3cmLbyVGdP0k1_EVobV65Qi7JFlTREehOSkQ1RCRWx8LyygyD9OYiZtPeoTVKtZN49gi3naODjiEtOqb0DPVqcVpPb3tIHXtl2OXHfdiJ_rFgNlvDNAu7w6884m9s5KpWd-nAgJGABwXfhnW8VCU-3XpExHrCGmgMLFmqzKDIcKx49tAoVfJCfIDpkRA8ouawQ2ehB2ECO7MQsgzAG1TxsJ4rKqXYL6jHWDl8drioBQA7JMEh_M45BVUqCElSfsyaysqpmt3T-INKx7mKgp22NwairL3GP125ayCH3j7kaRwCe7x86cY64khvBezojWprgg --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-3 --context edge-3 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-3
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+--------------------------------------------------
+Waiting for CSRs to appear in ITS1...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 3 pending CSRs (Need 3)...
+All required CSRs found.
+--------------------------------------------------
+Approving CSRs...
+Starting approve csrs for the cluster edge-1
+CSR edge-1-pxk7s approved
+set hubAcceptsClient to true for managed cluster edge-1
+
+ Your managed cluster edge-1 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-2
+CSR edge-2-rtt9j approved
+set hubAcceptsClient to true for managed cluster edge-2
+
+ Your managed cluster edge-2 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-3
+CSR edge-3-n5jcn approved
+set hubAcceptsClient to true for managed cluster edge-3
+
+ Your managed cluster edge-3 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+--------------------------------------------------
+Verifying and Labeling Clusters...
+NAME     HUB ACCEPTED   MANAGED CLUSTER URLS                JOINED   AVAILABLE   AGE
+edge-1   true           https://edge-1-control-plane:6443                        2m23s
+edge-2   true           https://edge-2-control-plane:6443                        65s
+edge-3   true           https://edge-3-control-plane:6443                        4s
+Labeling edge-1...
+managedcluster.cluster.open-cluster-management.io/edge-1 labeled
+Labeling edge-2...
+managedcluster.cluster.open-cluster-management.io/edge-2 labeled
+Labeling edge-3...
+managedcluster.cluster.open-cluster-management.io/edge-3 labeled
+==================================================
+Setup Complete!
+Configuration saved to: /users/mvn27/.kube/kubeflex
+Contexts available: kind-kubeflex, its1, wds1, wds2, edge-1 edge-2 edge-3
+==================================================
+...
+mvn27@node0:~/Ursa/manual_tests/hardcoded_node_pod_pingpong_repro$ kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/hardcoded_node_pod_pingpong_repro$ kubectl --context wds1 apply -f pod_seed.yaml
+  kubectl --context wds1 apply -f pod_policy.yaml
+pod/hardcoded-node-pod created
+configmap/ursa-configmap-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-hardcoded-node-pod-repro created
+mvn27@node0:~/Ursa/manual_tests/hardcoded_node_pod_pingpong_repro$  kubectl --context edge-1 get pods -l app=manual-placement -o wide -w
+NAME                 READY   STATUS    RESTARTS   AGE   IP       NODE                      NOMINATED NODE   READINESS GATES
+hardcoded-node-pod   0/1     Pending   0          5s    <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          47s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          47s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          47s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Pending   0          0s    <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          34s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          34s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          34s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Pending   0          0s    <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          53s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          53s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          54s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Pending   0          0s    <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          54s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          54s   <none>   your-specific-node-name   <none>           <none>
+hardcoded-node-pod   0/1     Failed    0          54s   <none>   your-specific-node-name   <none>           <none>
+^Z
+[3]+  Stopped                 kubectl --context edge-1 get pods -l app=manual-placement -o wide -w
+mvn27@node0:~/Ursa/manual_tests/hardcoded_node_pod_pingpong_repro$ kubectl --context edge-1 get cm ursa-configmap-template
+NAME                      DATA   AGE
+ursa-configmap-template   1      9m46s
+mvn27@node0:~/Ursa/manual_tests/hardcoded_node_pod_pingpong_repro$

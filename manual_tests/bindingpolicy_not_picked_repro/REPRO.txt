@@ -1,0 +1,253 @@
+Manual repro: BindingPolicy names longer than 63 characters do not reach ITS
+============================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this
+folder:
+
+  manual_tests/bindingpolicy_not_picked_repro/
+
+Goal
+----
+Show that **BindingPolicy ``metadata.name`` length** determines whether ITS
+picks up the policy for downsync.
+
+Two cases use the same ``spec``; only ``metadata.name`` length differs:
+
+  **63 characters — PASS**  BindingPolicy on WDS, Binding on WDS, ManifestWorks
+                            on ITS, ConfigMap on edges.
+
+  **64 characters — FAIL**  BindingPolicy and Binding exist on WDS, but ITS does
+                            not create ManifestWorks; edges stay empty.
+
+Notes
+-----
+  Boundary sweep: ``manual_tests/bindingpolicy_name_length_repro/``
+  Automated run: ``tests/test_2026-06-25_00-27`` (catalog policy names > 63 chars
+  fail ManifestWork coverage on ITS).
+
+
+Files in this folder
+--------------------
+  REPRO.txt                    (this guide)
+  workload.yaml                (Namespace + ConfigMap on WDS)
+  cleanup.sh                   (remove policies, bindings, workloads)
+  setup_kubestellar.sh         (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh
+
+  case_pass_63/
+    binding-policy.yaml        (name length = 63 — should sync)
+
+  case_fail_64/
+    binding-policy.yaml        (name length = 64 — should NOT sync)
+
+
+Policy names (exact lengths)
+----------------------------
+  PASS (63): bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  FAIL (64): bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+
+bash <<'EOF'
+set -euo pipefail
+ARCH=amd64
+[ "$(uname -m)" = aarch64 ] && ARCH=arm64
+
+sudo apt-get update
+sudo apt-get install -y docker.io curl git
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER" || true
+if ! docker info >/dev/null 2>&1; then
+  sg docker -c "docker info"
+fi
+
+cd /tmp
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${ARCH}/kubectl"
+chmod +x kubectl && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm -f kubectl
+
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+curl -Lo kind "https://kind.sigs.k8s.io/dl/latest/kind-linux-${ARCH}"
+chmod +x kind && sudo install -o root -g root -m 0755 kind /usr/local/bin/kind
+rm -f kind
+
+curl -s https://raw.githubusercontent.com/kubestellar/kubeflex/main/scripts/install-kubeflex.sh \
+  | sudo bash -s -- --ensure-folder /usr/local/bin --strip-bin
+
+bash <(curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh) 0.10.1
+
+sudo sysctl -w fs.inotify.max_user_instances=8192
+sudo sysctl -w fs.inotify.max_user_watches=524288
+if docker info >/dev/null 2>&1; then
+  bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) \
+    kflex ocm helm kubectl docker kind
+else
+  sg docker -c "bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) kflex ocm helm kubectl docker kind"
+fi
+
+docker info
+kubectl version --client
+helm version
+kind version
+kflex version
+clusteradm version
+EOF
+
+
+Step 2 — Cluster setup (copy/paste)
+-----------------------------------
+  cd manual_tests/bindingpolicy_not_picked_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  kubectl config get-contexts
+  # Expect: kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Baseline workload on WDS (copy/paste)
+----------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_not_picked_repro
+
+  ./cleanup.sh
+  sleep 60
+
+  kubectl --context wds1 apply -f workload.yaml
+
+  kubectl --context wds1 get namespace ursa-namespace-bug-repro
+  kubectl --context wds1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+
+
+Step 4 — PASS case: 63-character BindingPolicy (copy/paste)
+-----------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_not_picked_repro
+
+  POLICY_PASS="bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  echo "PASS policy name length: ${#POLICY_PASS}"
+
+  kubectl --context wds1 apply -f case_pass_63/binding-policy.yaml
+  sleep 90
+
+  echo "--- WDS: BindingPolicy ---"
+  kubectl --context wds1 get bindingpolicy "${POLICY_PASS}"
+
+  echo "--- WDS: Binding (transport companion) ---"
+  kubectl --context wds1 get bindings.control.kubestellar.io "${POLICY_PASS}"
+
+  echo "--- ITS: ManifestWorks for this policy (use transport label; MW names are UUIDs) ---"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_PASS}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_PASS}" -o yaml | \
+    grep -E 'kind: (ManifestWork|Namespace|ConfigMap)|name: (ursa-namespace-bug-repro|ursa-configmap-bug-repro)'
+
+  echo "--- Edge: object arrived ---"
+  kubectl --context edge-1 get namespace ursa-namespace-bug-repro
+  kubectl --context edge-1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+  kubectl --context edge-2 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+
+  Expected (63 chars):
+    - BindingPolicy on wds1
+    - Binding on wds1 (same name as policy)
+    - 2 ManifestWorks on its1 (namespace + configmap) for label
+      transport.kubestellar.io/originOwnerReferenceBindingKey=<policy>
+    - ConfigMap on edge-1 and edge-2
+
+
+Step 5 — Reset before FAIL case (copy/paste)
+--------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_not_picked_repro
+
+  POLICY_PASS="bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  kubectl --context wds1 delete bindingpolicy "${POLICY_PASS}" --ignore-not-found --wait=false
+  kubectl --context wds1 patch bindings.control.kubestellar.io/"${POLICY_PASS}" \
+    --type=merge -p '{"metadata":{"finalizers":null}}' --ignore-not-found 2>/dev/null || true
+  kubectl --context wds1 delete bindings.control.kubestellar.io "${POLICY_PASS}" --ignore-not-found --wait=false
+
+  kubectl --context edge-1 delete namespace ursa-namespace-bug-repro --ignore-not-found --wait=false
+  kubectl --context edge-2 delete namespace ursa-namespace-bug-repro --ignore-not-found --wait=false
+  sleep 30
+
+  kubectl --context wds1 apply -f workload.yaml
+
+
+Step 6 — FAIL case: 64-character BindingPolicy (copy/paste)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_not_picked_repro
+
+  POLICY_FAIL="bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  echo "FAIL policy name length: ${#POLICY_FAIL}"
+
+  kubectl --context wds1 apply -f case_fail_64/binding-policy.yaml
+  sleep 90
+
+  echo "--- WDS: BindingPolicy (accepted — not an admission failure) ---"
+  kubectl --context wds1 get bindingpolicy "${POLICY_FAIL}" -o yaml
+
+  echo "--- WDS: Binding (still created) ---"
+  kubectl --context wds1 get bindings.control.kubestellar.io "${POLICY_FAIL}"
+
+  echo "--- ITS: no ManifestWorks for this policy ---"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_FAIL}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_FAIL}" -o name || \
+    echo "(no ManifestWorks — bug signature)"
+
+  echo "--- Edge: objects missing ---"
+  kubectl --context edge-1 get namespace ursa-namespace-bug-repro
+  kubectl --context edge-1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+
+  Expected (64 chars):
+    - BindingPolicy on wds1                         YES
+    - Binding on wds1                                 YES
+    - ManifestWorks on its1 for this policy label     NO (0 resources)
+    - ConfigMap on edges                            NO
+
+
+Step 7 — Side-by-side summary
+---------------------------
+  | Check                         | 63-char PASS | 64-char FAIL |
+  |-------------------------------|--------------|--------------|
+  | WDS BindingPolicy             | yes          | yes          |
+  | WDS Binding object            | yes          | yes          |
+  | ITS ManifestWorks (by label)  | 2            | 0            |
+  | edge-1 ConfigMap              | yes          | no           |
+
+  The only difference between the two cases is one character in
+  BindingPolicy ``metadata.name``.
+
+
+Step 8 — Teardown (optional)
+----------------------------
+  cd manual_tests/bindingpolicy_not_picked_repro
+  ./cleanup.sh
+
+
+Expected behaviour
+------------------
+  A BindingPolicy on WDS should lead to ManifestWorks on ITS and bound objects
+  on selected edges, regardless of ``metadata.name`` length.
+
+  **63 characters (Step 4):** Binding on WDS, ManifestWorks on ITS, ConfigMap on
+  edges.
+
+  **64 characters (Step 6):** same spec should still downsync. Instead WDS keeps
+  the BindingPolicy and Binding, but ITS has no ManifestWorks and edges receive
+  nothing — with no clear error on WDS.
+
+  Observed boundary: 63 PASS, 64 FAIL.
+

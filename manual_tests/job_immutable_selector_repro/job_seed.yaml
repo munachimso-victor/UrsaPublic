@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+# Intentionally omit spec.selector / controller-uid labels in the seed.
+# Live WDS and edge each stamp their own controller-uid; the ManifestWork
+# payload on ITS omits those fields, so re-apply hits immutable/null selector.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ursa-job-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  backoffLimit: 3
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: ursa-testing
+        ursa-workload: batch-immutable-selector
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: data-processor
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          echo "Job started"
+          sleep 10
+          echo "Job complete"

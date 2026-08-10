@@ -1,0 +1,16 @@
+# BindingPolicy name is exactly 63 characters (last length that syncs to ITS).
+# Name: bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-configmap-bug-repro
+    - ursa-namespace-bug-repro

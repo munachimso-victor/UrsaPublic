@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ursa-pvc-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeName: ursa-csipv-template
+  storageClassName: ''
+  resources:
+    requests:
+      storage: 1Mi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ursa-csipv-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  capacity:
+    storage: 1Mi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: ursa-pvc-template
+    namespace: ursa-namespace-template
+  storageClassName: ursa-storageclass-template
+  csi:
+    driver: hostpath.csi.k8s.io
+    volumeHandle: ursa-disk-template
+    controllerPublishSecretRef:
+      name: ursa-opaquesecret-template
+      namespace: ursa-namespace-template
+    controllerExpandSecretRef:
+      name: ursa-opaquesecret-template
+      namespace: ursa-namespace-template
+    nodeStageSecretRef:
+      name: ursa-opaquesecret-template
+      namespace: ursa-namespace-template
+    nodePublishSecretRef:
+      name: ursa-opaquesecret-template
+      namespace: ursa-namespace-template
+    nodeExpandSecretRef:
+      name: ursa-opaquesecret-template
+      namespace: ursa-namespace-template
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ursa-storageclass-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true

@@ -1,0 +1,16 @@
+# Short policy name (same convention as engine format_binding_policy_name).
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-sa-repro
+spec:
+  clusterSelectors:
+    - matchLabels:
+        name: edge-1
+    - matchLabels:
+        name: edge-2
+  downsync:
+    - objectNames:
+        - ursa-namespace-template
+        - ursa-opaquesecret-template
+        - ursa-serviceaccount-template

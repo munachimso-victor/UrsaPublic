@@ -1,0 +1,21 @@
+# Case 2: secret + ConfigMap + namespace in one policy (SA-bundle style).
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: repro-dockerconfigjson-case2-with-configmap
+  labels:
+    repro.kubestellar.io/case: dockerconfigjson-case2
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+    - repro-configmap-dockerconfigjson
+  - objectNames:
+    - ursa-namespace-template
+    statusCollectors:
+    - namespace-details

@@ -1,0 +1,21 @@
+# Case 3: secret + Pod + namespace (pod-bundle style; pod references the secret).
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: repro-dockerconfigjson-case3-with-pod
+  labels:
+    repro.kubestellar.io/case: dockerconfigjson-case3
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+    - repro-pod-dockerconfigjson
+  - objectNames:
+    - ursa-namespace-template
+    statusCollectors:
+    - namespace-details

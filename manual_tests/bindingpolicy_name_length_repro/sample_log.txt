@@ -1,0 +1,117 @@
+venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$ ./cleanup.sh && sleep 60
+kubectl --context wds1 apply -f workload.yaml
+./probe_length.sh --binary 50 70
+Deleting BindingPolicies from wds1 (bp-len-probe-* and known catalog names)...
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+bindingpolicy.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+Clearing stuck Bindings (transport finalizer) on wds1...
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+binding.control.kubestellar.io "bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+Deleting workloads from wds1...
+configmap "ursa-configmap-length-probe" deleted from ursa-namespace-length-probe namespace
+namespace "ursa-namespace-length-probe" deleted
+Deleting workloads from edge-1...
+namespace "ursa-namespace-length-probe" deleted
+Deleting workloads from edge-2...
+namespace "ursa-namespace-length-probe" deleted
+Cleanup issued. Wait ~60s before re-running a probe.
+namespace/ursa-namespace-length-probe created
+configmap/ursa-configmap-length-probe created
+=== length=60 name='bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' (actual=60) ===
+namespace/ursa-namespace-length-probe unchanged
+configmap/ursa-configmap-length-probe unchanged
+bindingpolicy.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+Waiting 90s for transport...
+  wds BindingPolicy:              1
+  wds Binding object:             1
+  its1 MW count (this policy):    2
+  its1 MW carries Namespace:      1
+  its1 MW carries ConfigMap:      1
+  edge-1 ConfigMap:               1
+RESULT: PASS
+
+=== length=65 name='bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' (actual=65) ===
+binding.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa patched
+namespace "ursa-namespace-length-probe" deleted
+namespace "ursa-namespace-length-probe" deleted
+namespace/ursa-namespace-length-probe unchanged
+configmap/ursa-configmap-length-probe unchanged
+bindingpolicy.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+Waiting 90s for transport...
+  wds BindingPolicy:              1
+  wds Binding object:             1
+  its1 MW count (this policy):    0
+  its1 MW carries Namespace:      0
+  its1 MW carries ConfigMap:      0
+  edge-1 ConfigMap:               1
+  >>> BUG SIGNATURE: policy on WDS, zero ManifestWorks on ITS for this policy
+RESULT: FAIL
+
+=== length=62 name='bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' (actual=62) ===
+namespace "ursa-namespace-length-probe" deleted
+namespace "ursa-namespace-length-probe" deleted
+namespace/ursa-namespace-length-probe unchanged
+configmap/ursa-configmap-length-probe unchanged
+bindingpolicy.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+Waiting 90s for transport...
+  wds BindingPolicy:              1
+  wds Binding object:             1
+  its1 MW count (this policy):    2
+  its1 MW carries Namespace:      1
+  its1 MW carries ConfigMap:      1
+  edge-1 ConfigMap:               1
+RESULT: PASS
+
+=== length=63 name='bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' (actual=63) ===
+namespace "ursa-namespace-length-probe" deleted
+namespace "ursa-namespace-length-probe" deleted
+namespace/ursa-namespace-length-probe unchanged
+configmap/ursa-configmap-length-probe unchanged
+bindingpolicy.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+Waiting 90s for transport...
+  wds BindingPolicy:              1
+  wds Binding object:             1
+  its1 MW count (this policy):    2
+  its1 MW carries Namespace:      1
+  its1 MW carries ConfigMap:      1
+  edge-1 ConfigMap:               1
+RESULT: PASS
+
+=== length=64 name='bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' (actual=64) ===
+binding.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa patched
+namespace "ursa-namespace-length-probe" deleted
+namespace "ursa-namespace-length-probe" deleted
+namespace/ursa-namespace-length-probe unchanged
+configmap/ursa-configmap-length-probe unchanged
+bindingpolicy.control.kubestellar.io/bp-len-probe-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+Waiting 90s for transport...
+  wds BindingPolicy:              1
+  wds Binding object:             1
+  its1 MW count (this policy):    0
+  its1 MW carries Namespace:      0
+  its1 MW carries ConfigMap:      0
+  edge-1 ConfigMap:               1
+  >>> BUG SIGNATURE: policy on WDS, zero ManifestWorks on ITS for this policy
+RESULT: FAIL
+
+=== binary search summary ===
+last PASS length:  63
+first FAIL length: 65
+boundary: PASS <= 63, FAIL >= 65
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$

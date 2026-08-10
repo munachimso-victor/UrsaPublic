@@ -1,0 +1,15 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-ultimate-test-pod-policy-ursa-pvc-template
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-pvc-template
+    - ursa-csipv-template
+    - ursa-namespace-template

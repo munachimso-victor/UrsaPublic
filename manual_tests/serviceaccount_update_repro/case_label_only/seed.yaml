@@ -1,0 +1,29 @@
+# Minimal warm-update repro: namespace + one secret + ServiceAccount.
+# Matches catalog object names used by Ursa ServiceAccount campaigns.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-opaquesecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: Opaque
+stringData:
+  token: repro-placeholder
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ursa-serviceaccount-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+secrets:
+  - name: ursa-opaquesecret-template

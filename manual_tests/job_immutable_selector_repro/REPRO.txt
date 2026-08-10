@@ -1,0 +1,220 @@
+Manual repro: Job immutable selector/controller-uid drift
+==========================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/job_immutable_selector_repro/
+
+
+Goal
+----
+Reproduce the Job apply failure where:
+
+  - Seed Job is authored without spec.selector / controller-uid (normal Job)
+  - BindingPolicy downsyncs Namespace + Job to the edge
+  - Live WDS Job gets a hub-local controller-uid stamped by the WDS Job
+    controller (visible on `kubectl get job` on wds1)
+  - The Job ManifestWork on ITS does NOT carry that stamped selector /
+    controller-uid — desired payload has no spec.selector and no
+    controller-uid template labels (stripped / not transported)
+  - Edge Job controller stamps a different edge-local controller-uid into
+    the same immutable fields
+  - Work agent re-applies the stripped ManifestWork payload (selector null)
+    onto the edge Job that already has an edge selector
+  - Spoke API rejects the update; Job ManifestWork → Applied=False
+
+
+Ursa automated hit (same mechanism):
+  tests/2026-07-26_shard6/run_ursa-bp-job__pert__reset_always/ursa-job-template/
+    testcase_001_ursa-bp-job_original.txt
+    testcase_001_ursa-bp-job_original/manifestworks.yaml
+
+
+How this fails (step-by-step)
+-----------------------------
+  1. Desired seed on WDS
+     Apply job_seed.yaml: authored Job has no spec.selector and no
+     controller-uid labels on the pod template.
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Namespace, Job.
+
+  3. WDS Job controller stamps hub-local immutable fields on the live
+     WDS Job object:
+       spec.selector.matchLabels["batch.kubernetes.io/controller-uid"]
+       = <hub-uid>
+     (also mirrored into template labels)
+
+  4. KubeStellar creates a ManifestWork on ITS. The MW name may include
+     the hub Job UID, but the MW manifest payload omits
+     spec.selector and controller-uid labels — those stamped fields are
+     not what gets applied on the spoke.
+
+  5. Spoke Job is created; edge Job controller stamps edge-local
+     controller-uid into the same immutable fields (<edge-uid> != <hub-uid>).
+
+  6. Work agent re-applies the stripped MW Job onto the edge.
+     Edge API rejects:
+       spec.selector: Required value
+       selector does not match template labels
+       spec.selector: Invalid value: null: field is immutable
+       spec.template: ... field is immutable
+
+  7. Job ManifestWork shows Applied=False (AppliedManifestWorkFailed),
+     Available=True may still be True.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                              (this guide)
+  install_requirements.sh                (host prereqs: docker, kubectl, helm, …)
+  setup_kubestellar.sh                   (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+  fix-klusterlet-rbac.yaml               (extra edge RBAC; optional for this case)
+  job_seed.yaml                          (Namespace + Job, no selector, no TTL)
+  job_policy.yaml                        (BindingPolicy for edge-1 / edge-2)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/job_immutable_selector_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/job_immutable_selector_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  cd /path/to/manual_tests/job_immutable_selector_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 apply -f job_seed.yaml
+  kubectl --context wds1 apply -f job_policy.yaml
+
+  sleep 60
+
+  # Live objects on BOTH planes have selector — UIDs differ
+  HUB_UID=$(kubectl --context wds1 get job -n ursa-namespace-template ursa-job-template \
+    -o jsonpath='{.spec.selector.matchLabels.batch\.kubernetes\.io/controller-uid}')
+  EDGE_UID=$(kubectl --context edge-1 get job -n ursa-namespace-template ursa-job-template \
+    -o jsonpath='{.spec.selector.matchLabels.batch\.kubernetes\.io/controller-uid}')
+  echo "live wds1 controller-uid=${HUB_UID}"
+  echo "live edge-1 controller-uid=${EDGE_UID}"
+
+
+Step 4 — Verify ManifestWork payload is stripped + apply failed
+---------------------------------------------------------------
+  MW=$(kubectl --context its1 -n edge-1 get manifestworks \
+    -l transport.kubestellar.io/originOwnerReferenceBindingKey=ursa-bp-job-immutable-selector-repro \
+    -o json | jq -r '
+      .items[]
+      | select(.spec.workload.manifests[]?.kind == "Job")
+      | .metadata.name
+    ' | head -1)
+  echo "Job ManifestWork=${MW}"
+
+  # Desired payload on ITS: no spec.selector, no controller-uid labels
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" -o json | jq '
+    .spec.workload.manifests[]
+    | select(.kind == "Job")
+    | {
+        has_selector: (.spec.selector != null),
+        selector: .spec.selector,
+        template_labels: .spec.template.metadata.labels
+      }'
+
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" \
+    -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} msg={.message}{"\n"}{end}'
+
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" -o yaml
+
+  SUCCESS CRITERIA:
+    Live WDS Job HAS selector with hub controller-uid
+    Live edge Job HAS selector with different edge controller-uid
+    Job ManifestWork payload has:
+      has_selector: false  (spec.selector absent / null)
+      template labels WITHOUT controller-uid /
+        batch.kubernetes.io/controller-uid
+    Job ManifestWork shows Applied=False (AppliedManifestWorkFailed)
+    Available=True may still be True (misleading)
+    resourceStatus message contains:
+      spec.selector: Required value
+      selector does not match template labels
+      spec.selector: Invalid value: null: field is immutable
+      spec.template: ... field is immutable
+
+  Example from node0:
+    live wds1  controller-uid=b887dee4-86b3-46bc-9102-6212f0fd63fe
+    live edge-1 controller-uid=898db9f0-af1f-4a03-84d4-3ba85fbe6efa
+    MW name includes hub uid: ...-wds1-b887dee4-86b3-46bc-9102-6212f0fd63fe
+    MW Job.spec has no selector; template labels lack controller-uid
+
+
+Clean slate (re-run)
+--------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-job-immutable-selector-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete job ursa-job-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete job ursa-job-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex
+  - Apply manifests from the Ursa repo root (use this folder)
+  - Confuse live WDS Job YAML with ManifestWork desired payload —
+    live WDS has selector; MW on ITS does not
+  - Confuse this with CronJob: CronJob itself is never stamped with
+    spec.selector; only child Jobs created at schedule time are, and
+    those child Jobs are not what ManifestWork is applying here
+
+
+Expected behaviour
+------------------
+  KubeStellar already strips controller-uid from the Job before it reaches
+  ITS (ManifestWork payload has no selector / controller-uid). That means
+  it already treats those values as volatile UID data.
+
+  The apply/reconcile path should do the same thing: ignore diffs for
+  controller-uid (and the Job selector that is derived from it), just as
+  KubeStellar already ignores UID fields elsewhere. Stripping for transport
+  without ignoring on apply is inconsistent — the edge keeps its stamped
+  UID, desired has none, and every re-apply fails as immutable.
+
