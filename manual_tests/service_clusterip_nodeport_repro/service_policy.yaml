@@ -1,0 +1,13 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-service-clusterip-nodeport-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  downsync:
+  - objectNames:
+    - ursa-namespace-template
+    - ursa-clusterip-static-template
+    - ursa-nodeport-backdoor-fullymanual-template

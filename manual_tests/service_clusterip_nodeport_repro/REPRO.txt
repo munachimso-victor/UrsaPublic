@@ -1,0 +1,180 @@
+Manual repro: hub keeps static Service clusterIP/nodePort — wrap strips them on edge
+======================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/service_clusterip_nodeport_repro/
+
+ManifestWork usually reports Applied=True / Available=True. The failure is
+**not** an apply error — it is **cluster-local Service fields** that the hub
+wrap omits so the edge apiserver allocates different values than the seed.
+
+Repro uses the **same edge cluster twice** with the **same yaml**:
+  A) apply directly to edge-1  → clusterIP / nodePort match seed
+  B) clean up, apply via WDS   → edge gets allocator-assigned values
+
+
+Goal
+----
+On one WEC (edge-1), show Kubernetes honors user-set Service clusterIP and
+nodePort when yaml is applied locally, then show KubeStellar downsync breaks
+that on the same cluster:
+
+  Phase A — direct to edge-1 (control):
+    kubectl apply service_seed.yaml on edge-1
+    ursa-clusterip-static-template:      spec.clusterIP = 10.96.100.100
+    ursa-nodeport-backdoor-fullymanual:  spec.clusterIP = 10.96.100.222
+                                         ports[0].nodePort = 32222
+
+  Phase B — same yaml via hub (bug):
+    delete Phase A objects from edge-1
+    kubectl apply service_seed.yaml + service_policy.yaml on wds1
+    edge-1 receives downsync
+    both Services have **different** clusterIP / nodePort than seed
+    WDS hub objects still show seed values; ManifestWork wrap omits them
+
+
+Ursa automated hits:
+  tests/all_baselines_10shards/shard8/run_baseline_reset_always/testcase_003_ursa-bp-clusterip-static_original.txt
+  tests/all_baselines_10shards/shard8/run_baseline_reset_always/testcase_009_ursa-bp-nodeport-backdoor-fullymanual_original.txt
+
+Related (same mechanism on static backend Service; Ingress itself is healthy):
+  tests/all_baselines_10shards/shard2/run_baseline_reset_always/testcase_009_ursa-bp-ingress_original.txt
+
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  service_seed.yaml   (Namespace + static ClusterIP + manual NodePort Services)
+  service_seed_dualstack_optional.yaml (optional; dual-stack clusterIPs — needs dual-stack Kind)
+  service_policy.yaml (BindingPolicy → edge-1 only)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/service_clusterip_nodeport_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+
+  kubectl --context wds1 get bindingpolicy ursa-bp-service-clusterip-nodeport-repro 2>&1 || true
+
+
+Step 3 — Phase A: apply seed directly on edge-1 (control)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/service_clusterip_nodeport_repro
+
+  kubectl --context edge-1 apply -f service_seed.yaml
+  sleep 10
+
+  echo '=== Phase A: direct apply on edge-1 (should keep seed IPs/ports) ==='
+  kubectl --context edge-1 get svc -n ursa-namespace-template
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-clusterip-static-template \
+    -o jsonpath='clusterIP={.spec.clusterIP}{"\n"}'
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-backdoor-fullymanual-template \
+    -o jsonpath='clusterIP={.spec.clusterIP} nodePort={.spec.ports[0].nodePort}{"\n"}'
+
+  SUCCESS (Phase A):
+    clusterIP-static:      10.96.100.100
+    nodeport-backdoor:     clusterIP=10.96.100.222, nodePort=32222
+
+  Re-run Phase A: delete first (Step 4 cleanup), then apply Step 3 again.
+
+
+Step 4 — Clean up edge-1 before Phase B
+---------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 delete -f service_seed.yaml --ignore-not-found --wait=false
+  sleep 30
+
+  kubectl --context edge-1 get svc -n ursa-namespace-template 2>&1
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+
+
+Step 5 — Phase B: same yaml via WDS + BindingPolicy (bug)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/service_clusterip_nodeport_repro
+
+  kubectl --context wds1 apply -f service_seed.yaml
+  kubectl --context wds1 apply -f service_policy.yaml
+  sleep 45
+
+
+Step 6 — Verify Phase B: WDS vs edge (all Services in seed)
+-------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  echo '=== WDS hub — seed values should still be present ==='
+  for SVC in ursa-clusterip-static-template \
+             ursa-nodeport-backdoor-fullymanual-template; do
+    echo "--- wds1/$SVC ---"
+    kubectl --context wds1 get svc -n ursa-namespace-template "$SVC" \
+      -o jsonpath='clusterIP={.spec.clusterIP} clusterIPs={.spec.clusterIPs} nodePort={.spec.ports[0].nodePort}{"\n"}' 2>&1
+  done
+
+  echo '=== edge-1 after downsync — cluster-local fields drift from seed ==='
+  kubectl --context edge-1 get svc -n ursa-namespace-template
+  for SVC in ursa-clusterip-static-template \
+             ursa-nodeport-backdoor-fullymanual-template; do
+    echo "--- edge-1/$SVC ---"
+    kubectl --context edge-1 get svc -n ursa-namespace-template "$SVC" \
+      -o jsonpath='clusterIP={.spec.clusterIP} clusterIPs={.spec.clusterIPs} nodePort={.spec.ports[0].nodePort}{"\n"}' 2>&1
+  done
+
+  echo '=== ManifestWork status (usually Applied=True despite drift) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o custom-columns=\
+NAME:.metadata.name,APPLIED:.status.conditions[?(@.type==\"Applied\")].status,\
+AVAILABLE:.status.conditions[?(@.type==\"Available\")].status
+
+  SUCCESS (Step 6 — live objects):
+    WDS keeps seed clusterIP / clusterIPs / nodePort
+    edge-1 has different allocator values for those fields
+
+
+Step 7 — ManifestWork: snapshot wrapped Service manifests
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml > /tmp/repro-mw-edge-1.yaml
+
+  for SVC in ursa-clusterip-static-template \
+             ursa-nodeport-backdoor-fullymanual-template; do
+    echo "=== ManifestWork wrapped Service: $SVC ==="
+    grep -B5 -A20 "name: ${SVC}" /tmp/repro-mw-edge-1.yaml | grep -A20 'kind: Service' | head -21
+    echo
+  done
+
+  SUCCESS (Step 7 — wrap snapshot):
+    spec.clusterIP and spec.clusterIPs are absent from each wrapped Service
+    ports[].nodePort is absent or null (not the hub-assigned integer)
+    Attach /tmp/repro-mw-edge-1.yaml excerpt in the GitHub issue as evidence
+
+
+Snapshot after Step 7:
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  User-specified spec.clusterIP and ports[].nodePort from WDS should reach the
+  spoke Service, or be treated as cluster-local fields the hub does not
+  re-clobber. Phase B on edge-1 should match Phase A seed values.
+
+Related Ursa variants (same wrap family):
+  nodeport-sticky-manualport — manual nodePort only
+  nodeport-localized — wrap also drops externalTrafficPolicy/internalTrafficPolicy Local
+  ursa-bp-ingress — Ingress healthy; static ClusterIP backend Service drifts (not in this seed)

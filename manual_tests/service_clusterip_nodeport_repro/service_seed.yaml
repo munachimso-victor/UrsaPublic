@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ursa-clusterip-static-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  type: ClusterIP
+  clusterIP: 10.96.100.100
+  selector:
+    app.kubernetes.io/managed-by: ursa-testing
+    ursa-workload: ultimate-test
+  ports:
+  - name: http-internal
+    protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ursa-nodeport-backdoor-fullymanual-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  type: NodePort
+  publishNotReadyAddresses: true
+  clusterIP: 10.96.100.222
+  selector:
+    app.kubernetes.io/managed-by: ursa-testing
+    ursa-workload: ultimate-test
+  ports:
+  - name: peer-discovery
+    protocol: TCP
+    port: 9090
+    targetPort: 9090
+    nodePort: 32222

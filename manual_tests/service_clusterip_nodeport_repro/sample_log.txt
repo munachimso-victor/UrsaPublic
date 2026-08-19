@@ -1,0 +1,358 @@
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ cd ~/Ursa/manual_tests/service_clusterip_nodeport_repro
+./setup_kubestellar.sh
+Using Workload Prefix: edge
+Using Host Cluster: kubeflex
+Using Host Port: 9443
+Using Kubeconfig Path: /users/mvn27/.kube/kubeflex
+==================================================
+CLEANUP INITIATED: Wiping clusters and contexts...
+Target Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Deleting Host Cluster: kubeflex...
+Deleting cluster "kubeflex" ...
+Deleted nodes: ["kubeflex-control-plane"]
+Deleting Workload Cluster: edge-1...
+Deleting cluster "edge-1" ...
+Deleted nodes: ["edge-1-control-plane"]
+Cleaning up KubeStellar contexts...
+Cleanup complete.
+--------------------------------------------------
+==================================================
+Starting KubeStellar Setup Scenario
+Host Cluster: kubeflex
+Member Clusters: edge-1
+Using Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Creating Kind cluster kubeflex with SSL passthrough...
+Creating "kubeflex" kind cluster with SSL passthrougn and 9443 port mapping...
+Creating cluster "kubeflex" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kubeflex"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kubeflex
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Installing an nginx ingress...
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+Patching nginx ingress to enable SSL passthrough...
+deployment.apps/ingress-nginx-controller patched
+Waiting for nginx ingress with SSL passthrough to be ready...
+Waiting for nginx ingress controller deployment to be rolled out...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "ingress-nginx-controller" successfully rolled out
+Waiting for nginx ingress controller pod to be ready...
+pod/ingress-nginx-controller-6856c8b665-b82c2 condition met
+Setting context to "kind-kubeflex"...
+Switched to context "kind-kubeflex".
+--------------------------------------------------
+Installing KubeStellar Core Helm Chart (v0.29.0)...
+Release "ks-core" does not exist. Installing it now.
+Pulled: ghcr.io/kubestellar/kubestellar/core-chart:0.29.0
+Digest: sha256:3b9550f95e99a4ed2361c53b045f7198d12c4035ec58bf7d5c83c74f7d7e3c10
+NAME: ks-core
+LAST DEPLOYED: Wed Aug 19 14:30:00 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+For your convenience you will probably want to add contexts to your
+kubeconfig named after the non-host-type control planes (WDSes and
+ITSes) that you just created (a host-type control plane is just an
+alias for the KubeFlex hosting cluster). You can do that with the
+following `kflex` commands; each creates a context and makes it the
+current one. See
+https://github.com/kubestellar/kubestellar/blob/0.29.0/docs/content/direct/core-chart.md#kubeconfig-files-and-contexts-for-control-planes
+for a way to do this without using `kflex`.
+Start by setting your current kubeconfig context to the one you used
+when installing this chart.
+
+kubectl config use-context $the_one_where_you_installed_this_chart
+kflex ctx --set-current-for-hosting # make sure the KubeFlex CLI's hidden state is right for what the Helm chart just did
+
+kflex ctx --overwrite-existing-context its1
+kflex ctx --overwrite-existing-context wds1
+
+Finally, you can use `kflex ctx` to switch back to the kubeconfig
+context for your KubeFlex hosting cluster.
+--------------------------------------------------
+Configuring KubeFlex contexts...
+Switched to context "kind-kubeflex".
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Checking for saved hosting cluster context...
+✔ Switching to hosting cluster context...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context its1 not found (context its1 not found), trying to load from server...
+✔ Switching to context its1...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context wds1 not found (context wds1 not found), trying to load from server...
+✔ Switching to context wds1...
+--------------------------------------------------
+Waiting for ITS (its1) to be fully initialized...
+Waiting for its-hub-init hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for its-hub-init job completion...
+job.batch/its-hub-init condition met
+Waiting for install-status-addon hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for install-status-addon job completion...
+job.batch/install-status-addon condition met
+ITS initialization complete.
+--------------------------------------------------
+Creating and Registering Workload Clusters...
+Processing edge-1...
+Creating cluster "edge-1" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-1 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+Context "kind-edge-1" renamed to "edge-1".
+Registering edge-1 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6IlpvLThxcV9IQmw3ZjV4cFg1WVlDNGZBWnZfRmR5QWVqWEduS2dWWmZ5RVEifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg3MTc1NDIzLCJpYXQiOjE3ODcxNzE4MjMsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6ImYyMjhlNDJkLTdiMDgtNGNjMi05ODMzLWQ2Zjc1YzAzMWFlMyJ9fSwibmJmIjoxNzg3MTcxODIzLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.Lp7FOarMl5OUkrXsrjHLrsIjzaan8WanmT3HWlTzVhywQK-i1CzvXZnQjG0EqZd0huKiQqOqfXH8vxAiawkUrnW_laHk2dzp_i87d9FoAHPVbJJUYdrsY3jX-N06dihbAX0BdSkrnGFcLQmLN4BWcmV8OfiYFYY6OUmWRes2fgcBxzx8hHq6PaEJtYvCQmor6liQHZjRSfX3roqsCEuBmwr7_oG96zqXlfBacJLySEiNvKrT2h7Mr_IUYhn7sqQnqwBm9bdHo8__nOu1BP3lPExGckeCX4qMv-8nCgXak-5zJKtiu3qhJdm-AUCJ-qAaR1O8Jpl1E4QhyghxP3lTdw --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-1 --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-1
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+--------------------------------------------------
+Waiting for CSRs to appear in ITS1...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+No resources found
+Found 0 pending CSRs (Need 1)...
+Waiting 5 seconds...
+Found 1 pending CSRs (Need 1)...
+All required CSRs found.
+--------------------------------------------------
+Approving CSRs...
+Starting approve csrs for the cluster edge-1
+CSR edge-1-ktqk7 approved
+set hubAcceptsClient to true for managed cluster edge-1
+
+ Your managed cluster edge-1 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+--------------------------------------------------
+Verifying and Labeling Clusters...
+NAME     HUB ACCEPTED   MANAGED CLUSTER URLS                JOINED   AVAILABLE   AGE
+edge-1   true           https://edge-1-control-plane:6443                        3s
+Labeling edge-1...
+managedcluster.cluster.open-cluster-management.io/edge-1 labeled
+==================================================
+Setup Complete!
+Configuration saved to: /users/mvn27/.kube/kubeflex
+Contexts available: kind-kubeflex, its1, wds1, edge-1
+==================================================
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager created
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding created
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ kubectl --context edge-1 apply -f service_seed.yaml
+kubectl --context edge-1 get svc -n ursa-namespace-template ursa-clusterip-static-template \
+  -o jsonpath='clusterIP={.spec.clusterIP}{"\n"}'
+kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-backdoor-fullymanual-template \
+  -o jsonpath='clusterIP={.spec.clusterIP} nodePort={.spec.ports[0].nodePort}{"\n"}'
+namespace/ursa-namespace-template created
+service/ursa-clusterip-static-template created
+service/ursa-nodeport-backdoor-fullymanual-template created
+clusterIP=10.96.100.100
+clusterIP=10.96.100.222 nodePort=32222
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ kubectl --context edge-1 delete -f service_seed.yaml --ignore-not-found --wait=false
+sleep 30
+namespace "ursa-namespace-template" deleted
+service "ursa-clusterip-static-template" deleted from ursa-namespace-template namespace
+service "ursa-nodeport-backdoor-fullymanual-template" deleted from ursa-namespace-template namespace
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ kubectl --context wds1 apply -f service_seed.yaml
+kubectl --context wds1 apply -f service_policy.yaml
+sleep 45
+namespace/ursa-namespace-template created
+service/ursa-clusterip-static-template created
+service/ursa-nodeport-backdoor-fullymanual-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-service-clusterip-nodeport-repro created
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ for SVC in ursa-clusterip-static-template \
+           ursa-nodeport-backdoor-fullymanual-template; do
+  echo "=== $SVC ==="
+  kubectl --context wds1 get svc -n ursa-namespace-template "$SVC" \
+    -o jsonpath='WDS clusterIP={.spec.clusterIP} clusterIPs={.spec.clusterIPs} nodePort={.spec.ports[0].nodePort}{"\n"}' 2>&1
+  kubectl --context edge-1 get svc -n ursa-namespace-template "$SVC" \
+    -o jsonpath='edge clusterIP={.spec.clusterIP} clusterIPs={.spec.clusterIPs} nodePort={.spec.ports[0].nodePort}{"\n"}' 2>&1
+done
+=== ursa-clusterip-static-template ===
+WDS clusterIP=10.96.100.100 clusterIPs=["10.96.100.100"] nodePort=
+edge clusterIP=10.96.201.210 clusterIPs=["10.96.201.210"] nodePort=
+=== ursa-nodeport-backdoor-fullymanual-template ===
+WDS clusterIP=10.96.100.222 clusterIPs=["10.96.100.222"] nodePort=32222
+edge clusterIP=10.96.87.32 clusterIPs=["10.96.87.32"] nodePort=31850
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ kubectl --context its1 -n edge-1 get manifestworks -o yaml > /tmp/repro-mw-edge-1.yaml
+for SVC in ursa-clusterip-static-template \
+           ursa-nodeport-backdoor-fullymanual-template; do
+  echo "=== $SVC ==="
+  grep -B5 -A20 "name: ${SVC}" /tmp/repro-mw-edge-1.yaml | grep -A20 'kind: Service' | head -21
+done
+=== ursa-clusterip-static-template ===
+        kind: Service
+        metadata:
+          creationTimestamp: "2026-08-19T20:39:33Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-clusterip-static-template
+          namespace: ursa-namespace-template
+        spec:
+          ports:
+          - name: http-internal
+            nodePort: null
+            port: 80
+            protocol: TCP
+            targetPort: 8080
+          selector:
+            app.kubernetes.io/managed-by: ursa-testing
+            ursa-workload: ultimate-test
+          type: ClusterIP
+  status:
+    conditions:
+    - lastTransitionTime: "2026-08-19T20:39:37Z"
+=== ursa-nodeport-backdoor-fullymanual-template ===
+        kind: Service
+        metadata:
+          creationTimestamp: "2026-08-19T20:39:33Z"
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-nodeport-backdoor-fullymanual-template
+          namespace: ursa-namespace-template
+        spec:
+          ports:
+          - name: peer-discovery
+            nodePort: null
+            port: 9090
+            protocol: TCP
+            targetPort: 9090
+          publishNotReadyAddresses: true
+          selector:
+            app.kubernetes.io/managed-by: ursa-testing
+            ursa-workload: ultimate-test
+          type: NodePort
+  status:
+    conditions:
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$ export KUBECONFIG=~/.kube/kubeflex
+bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+  -K ~/.kube/kubeflex -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-08-19_14:47:08
+Checking script dependencies:
+✔ kubectl version v1.36.3 at /usr/local/bin/kubectl
+✔ helm version v3.21.4 at /usr/local/bin/helm
+✔ jq version jq-1.6 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.53.4 at /usr/local/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-ZHGo
+Using kubeconfig(s): /users/mvn27/.kube/kubeflex
+Validating contexts(s):
+✔ edge-1 *
+✔ its1
+✔ kind-kubeflex
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-kubeflex
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-kubeflex
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6f8fcc5699-m2f5r, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-kubeflex, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-kubeflex, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5f8bf5476f-9l8lp namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-fb8f88f89-xcgzl namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-ZHGo/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-ZHGo
+mvn27@node0:~/Ursa/manual_tests/service_clusterip_nodeport_repro$
