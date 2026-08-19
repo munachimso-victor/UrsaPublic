@@ -1,0 +1,19 @@
+# Exact YAML seed from Ursa testcase_001 (test_suite_secret row 1).
+# Source: tests/test_2026-06-25_00-27/run_ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template/
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-dockerconfigjsonsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: '{"auths":{"reg.example.com":{"auth":"YWRtaW46cGFzc3dvcmQ="}}}'

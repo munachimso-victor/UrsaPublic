@@ -1,0 +1,244 @@
+Manual repro: Combined Job repro (superseded by split variants)
+===============================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/job_selector_repro/
+
+Sibling of pvc_null_storageclass_repro / pvc_volumename_repro
+(same setup_kubestellar.sh style). Isolates Job.spec.selector +
+controller-uid labels (no CronJob scenario).
+
+
+Goal
+----
+This folder originally combined two separate Job bugs. Use the split repro
+folders instead:
+
+  1. manual_tests/job_immutable_selector_repro/
+     Reproduces immutable selector/controller-uid drift on Job reconcile.
+
+  2. manual_tests/job_ttl_rerun_repro/
+     Reproduces one-shot Job reruns after ttlSecondsAfterFinished cleanup.
+
+You can still use this combined folder if you want both behaviors at once, but
+the split folders are easier to reason about and better for filing two issues.
+
+Ursa automated hit (same mechanism):
+  tests/2026-07-26_shard6/run_ursa-bp-job__pert__reset_always/ursa-job-template/
+    testcase_001_ursa-bp-job_original.txt
+    testcase_001_ursa-bp-job_original/manifestworks.yaml
+
+
+How this fails (step-by-step)
+-----------------------------
+  1. Desired state on WDS
+     Apply job_seed.yaml: Job has no spec.selector and no controller-uid
+     labels on the pod template. ConfigMap is a healthy sibling.
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Namespace, ConfigMap, Job.
+
+  3. KubeStellar creates ManifestWorks on ITS (ns=edge-*).
+     Work agent on the spoke applies the wrapped manifests.
+
+  4. Spoke Job is created. Job controller / apiserver fills
+     immutable selector + controller-uid labels (UID is edge-local).
+     Edge live Job now differs from WDS / ManifestWork desired.
+
+  5. Work agent keeps trying to apply WDS desired onto the spoke.
+     API server rejects:
+       spec.selector: Required value
+       selector does not match template labels
+       spec.selector: Invalid value: "null": field is immutable
+       spec.template: ... field is immutable
+
+  6. The Job ManifestWork shows Applied=False (AppliedManifestWorkFailed)
+     with immutable/selector errors, and may still show Available=True.
+     Do not use .items[0] from the BindingPolicy label — that often returns
+     the Namespace MW (Applied=True). Select the MW whose kind is Job.
+
+  7. Because ttlSecondsAfterFinished=60, completed edge Jobs are cleaned up.
+     Reconcile then re-pushes desired Job, so it runs again:
+     create → Running → Complete → TTL delete → recreate → Running …
+     Each recreate gets a new edge controller-uid. WDS Job remains 0/1.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                              (this guide)
+  install_requirements.sh                (host prereqs: docker, kubectl, helm, …)
+  setup_kubestellar.sh                   (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+  fix-klusterlet-rbac.yaml               (extra edge RBAC; optional for this case)
+  job_seed.yaml                          (Namespace + ConfigMap + Job, no selector)
+  job_policy.yaml                        (BindingPolicy for edge-1 / edge-2)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/job_selector_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/job_selector_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  cd /path/to/manual_tests/job_selector_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 apply -f job_seed.yaml
+  kubectl --context wds1 apply -f job_policy.yaml
+
+  # Confirm WDS Job has no selector in last-applied / desired YAML
+  kubectl --context wds1 get job -n ursa-namespace-template ursa-job-template -o yaml | \
+    grep -A20 '^spec:'
+
+  sleep 60
+
+  # Edge Job SHOULD have auto-filled selector + controller-uid
+  kubectl --context edge-1 get job -n ursa-namespace-template ursa-job-template -o yaml | \
+    grep -A30 '^spec:'
+
+
+Step 4 — Issue 1: Job ManifestWork immutable-field failure
+-----------------------------------------------------------
+  # BindingPolicy creates one ManifestWork per object. .items[0] is often
+  # Namespace (Applied=True) — pick the Job MW explicitly:
+  MW=$(kubectl --context its1 -n edge-1 get manifestworks \
+    -l transport.kubestellar.io/originOwnerReferenceBindingKey=ursa-bp-job-selector-repro \
+    -o json | jq -r '
+      .items[]
+      | select(.spec.workload.manifests[]?.kind == "Job")
+      | .metadata.name
+    ' | head -1)
+  echo "Job ManifestWork=${MW}"
+
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" \
+    -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} msg={.message}{"\n"}{end}'
+
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" -o yaml
+
+  SUCCESS CRITERIA:
+    Job ManifestWork shows Applied=False (AppliedManifestWorkFailed)
+    Available=True may still be True (misleading)
+    resourceStatus message contains one or more of:
+      spec.selector: Required value
+      selector does not match template labels
+      spec.selector: Invalid value: null: field is immutable
+      spec.template: ... field is immutable
+
+  Example Job MW name (uid in name matches WDS Job controller-uid):
+    ...-wds1-3408dcf2-2bea-4c15-83fd-69d2842b324b
+
+
+Step 5 — Issue 2: one-shot Job is re-executed after TTL delete
+---------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Poll — use sleep 70 to align with ttlSecondsAfterFinished: 60
+  for i in $(seq 1 12); do
+    echo "--- poll $i ---"
+    kubectl --context wds1 get job -n ursa-namespace-template ursa-job-template -o wide
+    kubectl --context edge-1 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-1: NotFound"
+    kubectl --context edge-2 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-2: NotFound"
+    sleep 70
+  done
+
+  # Same Job-MW selector as Step 4 (do NOT use .items[0])
+  MW=$(kubectl --context its1 -n edge-1 get manifestworks \
+    -l transport.kubestellar.io/originOwnerReferenceBindingKey=ursa-bp-job-selector-repro \
+    -o json | jq -r '
+      .items[]
+      | select(.spec.workload.manifests[]?.kind == "Job")
+      | .metadata.name
+    ' | head -1)
+  echo "Job ManifestWork=${MW}"
+
+  kubectl --context its1 -n edge-1 get manifestwork "${MW}" \
+    -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} msg={.message}{"\n"}{end}'
+
+  SUCCESS CRITERIA:
+    WDS Job stays 0/1 for the whole poll window
+    Edge Jobs cycle Complete → NotFound → Running → Complete …
+    Edge SELECTOR controller-uid changes across polls (new run each recreate)
+    This proves one-shot Job is being re-executed, not converged once
+
+  Example observed (node0):
+    wds1: 0/1 ~22m, selector uid=3408dcf2-... unchanged
+    edges: Complete → Running → NotFound → Complete; uid changes every recreate
+    Job MW: Applied=False Available=True (immutable/selector error in message)
+
+
+Clean slate (re-run)
+--------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-job-selector-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete job ursa-job-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete job ursa-job-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex
+  - Apply manifests from the Ursa repo root (use this folder)
+  - Add a manual spec.selector to the seed (that hides this bug path)
+  - Confuse this with CronJob: CronJob itself is never stamped with
+    spec.selector; only child Jobs created at schedule time are, and
+    those child Jobs are not what ManifestWork is applying here
+
+
+Expected behaviour
+------------------
+  1. Reconcile should not fight edge-stamped immutable Job fields
+     (selector/controller-uid under spec/template). Desired apply should avoid
+     immutable drift instead of repeatedly failing.
+
+  2. One-shot Jobs should not be re-executed after TTL cleanup just because
+     desired state still contains the same Job object. A completed Job should
+     not loop create/run/delete/recreate unless explicitly requested.
+
+  3. ManifestWork status should reflect this correctly (no misleading
+     availability signal while Job reconcile is failing or causing reruns).

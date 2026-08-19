@@ -1,0 +1,18 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-sa-repro
+spec:
+  clusterSelectors:
+    - matchLabels:
+        name: edge-1
+    - matchLabels:
+        name: edge-2
+  downsync:
+    - objectNames:
+        - ursa-namespace-template
+        - ursa-opaquesecret-template
+        - ursa-basicauthsecret-template
+        - ursa-dockerconfigjsonsecret-template
+        - ursa-dockercfgsecret-template
+        - ursa-serviceaccount-template

@@ -1,0 +1,171 @@
+Manual repro: hardcoded nodeName Pod → edge deletes → work-agent recreates (existence ping-pong)
+===============================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/hardcoded_node_pod_pingpong_repro/
+
+
+Goal
+----
+Reproduce a create/delete loop where:
+
+  - Hub downsyncs a Pod with spec.nodeName set to a name that does NOT
+    exist on the edge (your-specific-node-name)
+  - Edge admits/applies the Pod (ManifestWork Applied=True)
+  - Edge node lifecycle / orphan-pod cleanup deletes the Pod (node never
+    existed)
+  - Spoke work-agent sees the object missing vs ManifestWork desired state
+    and recreates it
+  - Edge deletes again → existence ping-pong (present ↔ absent)
+
+Unlike Job selector / PVC volumeName (immutable field → Applied=False),
+this often keeps Applied=True while Available=False (ResourcesNotAvailable),
+and the failure mode is object flapping, not a stuck apply.
+
+Ursa automated hit (same mechanism):
+  tests/2026-07-26_shard0/run_ursa-bp-hardcoded-node-pod__pert__reset_always/
+    hardcoded-node-pod/testcase_001_ursa-bp-hardcoded-node-pod_original.txt
+  Observed: UNSTABLE(2) over 240s — Pod disappeared ~t=15s, reappeared ~t=205s
+  MW: Applied=True, Available=False (ResourcesNotAvailable)
+
+
+How the ping-pong works (step-by-step)
+--------------------------------------
+  1. Desired state on WDS
+     Pod hardcoded-node-pod with
+       spec.nodeName: your-specific-node-name
+     (no such Node on Kind edge-1 / edge-2).
+     ConfigMap sibling for a stable contrast object.
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Pod + ConfigMap.
+
+  3. KubeStellar creates ManifestWorks on ITS (ns=edge-*).
+     Work agent applies the Pod on the spoke.
+
+  4. Edge Node lifecycle / orphan-pod cleanup treats the Pod as assigned
+     to a missing Node and deletes it.
+
+  5. Work agent reconciles: desired Pod still in ManifestWork, live Pod
+     gone → recreate.
+
+  6. Loop continues (may be seconds to minutes between flaps depending
+     on controller timing — not necessarily a tight busy-loop).
+
+  7. ManifestWork typically stays Applied=True with Available=False
+     while the Pod is missing / not ready.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                 (this guide)
+  setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh
+  fix-klusterlet-rbac.yaml  (optional for this namespaced case)
+  pod_seed.yaml             (Pod + ConfigMap)
+  pod_policy.yaml           (BindingPolicy for edge-1 / edge-2)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/job_immutable_selector_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/job_immutable_selector_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/hardcoded_node_pod_pingpong_repro
+
+  kubectl --context wds1 apply -f pod_seed.yaml
+  kubectl --context wds1 apply -f pod_policy.yaml
+
+  sleep 30
+
+
+Step 4 — Observe the ping-pong (kubectl -w)
+-------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Stream edge Pod create/delete events to scrollback (Ctrl-C to stop).
+  # Prefer label watch so the stream survives delete+recreate (watching a
+  # single name can exit when the object is deleted).
+  kubectl --context edge-1 get pods -l app=manual-placement -o wide -w
+
+  # Optional: in another terminal, confirm ConfigMap sibling stays put
+  # kubectl --context edge-1 get cm ursa-configmap-template -w
+
+  # After you have seen at least one disappear + reappear, Ctrl-C and check MW:
+  kubectl --context its1 -n edge-1 get manifestworks
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B5 -A30 'kind: Pod'
+
+  # WDS Pod should remain continuously present
+  kubectl --context wds1 get pod hardcoded-node-pod
+
+  SUCCESS CRITERIA:
+    Edge Pod hardcoded-node-pod appears and disappears at least once
+      without any manual delete
+    WDS Pod stays Present the whole time
+    ManifestWork for the Pod shows Applied=True and typically
+      Available=False (ResourcesNotAvailable) while the edge object is gone
+      or not ready
+    ConfigMap sibling stays Present on the edge (no existence flap)
+
+
+
+Clean slate (re-run)
+--------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-hardcoded-node-pod-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete pod hardcoded-node-pod --ignore-not-found --wait=false --force --grace-period=0 2>/dev/null || true
+    kubectl --context $ctx delete configmap ursa-configmap-template --ignore-not-found
+  done
+
+  kubectl --context wds1 delete pod hardcoded-node-pod --ignore-not-found --wait=false
+  kubectl --context wds1 delete configmap ursa-configmap-template --ignore-not-found
+
+  sleep 30
+
+
+
+Expected behaviour
+------------------
+  1. If an edge system controller deletes a downsynced object for a local
+     reason (orphan node, policy, etc.), the hub/work-agent should not
+     blindly recreate it forever.
+
+  2. Prefer: surface the deletion / unavailability in ManifestWork /
+     status, back off recreates, and/or reflect failure to the user on
+     the hub — rather than an unbounded create/delete loop.

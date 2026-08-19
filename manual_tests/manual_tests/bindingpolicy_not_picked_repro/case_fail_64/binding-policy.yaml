@@ -1,0 +1,16 @@
+# BindingPolicy name is exactly 64 characters (first length that fails ITS transport).
+# Name: bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-configmap-bug-repro
+    - ursa-namespace-bug-repro

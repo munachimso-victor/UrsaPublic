@@ -1,0 +1,230 @@
+Manual repro: HPA vs ManifestWork fight over Deployment.spec.replicas (ping-pong)
+==================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/hpa_replicas_pingpong_repro/
+
+Goal
+----
+Reproduce Hub/Edge disagreement over Deployment.spec.replicas when an edge
+HPA and ManifestWork both manage the same Deployment:
+
+  - Hub downsyncs Deployment WITH an explicit replicas value
+  - Hub also downsyncs an HPA targeting that Deployment
+  - Edge HPA clamps replicas into [minReplicas, maxReplicas] (quickly)
+  - For ~5 minutes edge stays clamped while WDS / ManifestWork still say
+    the hub desired replicas
+  - Work agent eventually re-applies hub desired onto the edge Deployment
+  - HPA clamps again immediately → slow ping-pong (~5 min cadence)
+  - ManifestWork often stays Applied=True; failure mode is instability /
+    lasting desired-vs-live drift, not Applied=False
+
+Two scenarios (no real load required — hub baseline is intentionally
+out of HPA bounds):
+
+  A) ABOVE max: Deployment.replicas=10, HPA maxReplicas=5  → flaps 10 ↔ 5
+  B) BELOW min: Deployment.replicas=1,  HPA minReplicas=3  → flaps 1 ↔ 3
+
+Observed timing (scenario A on Kind / KubeStellar v0.29.0):
+  WDS + ManifestWork stay at replicas=10 the whole time.
+  Edge sits at 5 for ~5 minutes, then briefly returns to 10 (work-agent),
+  then HPA SucceededRescale back to 5 almost immediately.
+  HPA status.lastScaleTime advances on that ~5 minute cadence.
+
+Ursa automated hits (same mechanism):
+  tests/2026-07-26_shard9/run_ursa-bp-hpa-high__pert__reset_always/ursa-hpa-high/
+    testcase_001_ursa-bp-hpa-high_original.txt
+  tests/2026-07-26_shard9/run_ursa-bp-hpa-low__pert__reset_always/ursa-hpa-low/
+    testcase_001_ursa-bp-hpa-low_original.txt
+
+
+How the ping-pong works (step-by-step)
+--------------------------------------
+  1. Desired state on WDS
+     Scenario A: Deployment replicas=10 + HPA min=1 max=5
+     Scenario B: Deployment replicas=1  + HPA min=3 max=10
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Namespace, Deployment, HorizontalPodAutoscaler.
+
+  3. KubeStellar creates ManifestWorks on ITS (ns=edge-*).
+     Work agent applies wrapped manifests on the spoke
+     (initial edge Deployment at hub replicas).
+
+  4. Edge HPA sees Deployment.replicas outside [min, max] and patches
+     the scale subresource / replicas into range almost immediately
+     (A → 5, B → 3). No traffic load / metrics-server needed for this
+     clamp (ScalingActive may be False if metrics API is missing).
+
+  5. Steady drift: WDS and ManifestWork still carry hub replicas (10 / 1);
+     edge stays at the HPA clamp (5 / 3). Short polls often look "stable"
+     here — that is the common state between flaps.
+
+  6. After ~5 minutes, work agent re-applies ManifestWork desired onto
+     the spoke and overwrites HPA's value (A → 10, B → 1).
+
+  7. HPA notices and clamps again immediately. Loop continues on that
+     slow cadence. Ursa stability watch saw repeated replicas flaps
+     (e.g. 4 flaps in a 240s window on a different run).
+
+  8. Unlike Job selector / PVC volumeName cases:
+     ManifestWork typically remains Applied=True — both sides can write
+     replicas, so the conflict is live drift + periodic overwrite, not
+     stuck Applied=False.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                 (this guide)
+  setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh
+  fix-klusterlet-rbac.yaml  (optional for this namespaced case)
+  hpa_deploy_high.yaml      (scenario A: replicas above HPA max)
+  hpa_deploy_low.yaml       (scenario B: replicas below HPA min)
+  hpa_policy.yaml           (BindingPolicy; names both scenarios —
+                             apply only one seed at a time, or both)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/hpa_replicas_pingpong_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/hpa_replicas_pingpong_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/hpa_replicas_pingpong_repro
+
+  # Clean slate first if re-running (see bottom).
+
+  # --- Scenario A: replicas above HPA max (10 vs max=5) ---
+  kubectl --context wds1 apply -f hpa_deploy_high.yaml
+  kubectl --context wds1 apply -f hpa_policy.yaml
+
+  # --- Scenario B: replicas below HPA min (1 vs min=3) ---
+  # (after clean slate, or also apply low seed — policy lists both names)
+  # kubectl --context wds1 apply -f hpa_deploy_low.yaml
+  # kubectl --context wds1 apply -f hpa_policy.yaml
+
+  sleep 30
+
+  # Confirm steady drift: hub/MW=10, edge clamped to 5
+  kubectl --context wds1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='wds replicas={.spec.replicas}{"\n"}'
+  kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='edge replicas={.spec.replicas}{"\n"}'
+
+
+Step 4 — Observe the slow ping-pong (~5 min cadence)
+----------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Timing:
+  #   most of the time: edge=5 while wds/MW=10
+  #   ~every 5 minutes: work-agent briefly sets edge=10
+  #   HPA immediately SucceededRescale back to 5
+  # Leave this running >= 10–15 minutes (Ctrl-C to stop).
+  # Prints each sample (scrollback) so you can copy before/after of a flap.
+
+  # Poll every 5s for ~20 minutes (240 samples):
+  for i in $(seq 1 240); do
+    echo "--- poll $i $(date -Is) ---"
+    kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-high \
+      -o jsonpath='deploy replicas={.spec.replicas} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context edge-1 -n ursa-namespace-template get hpa ursa-hpa-high \
+      -o jsonpath='hpa current={.status.currentReplicas} desired={.status.desiredReplicas} lastScale={.status.lastScaleTime} able={.status.conditions[?(@.type=="AbleToScale")].reason}{"\n"}'
+    sleep 5
+  done
+
+  # Scenario B: swap ursa-deploy-high / ursa-hpa-high for
+  #             ursa-deploy-low / ursa-hpa-low (1 ↔ 3).
+
+  # ManifestWorks usually stay Applied=True (contrast Job/PVC bugs):
+  kubectl --context its1 -n edge-1 get manifestworks
+
+  SUCCESS CRITERIA:
+    Between flaps: wds=10, ManifestWork desired=10, edge=5 (lasting drift)
+    On a flap: edge briefly shows 10, then HPA clamps to 5 immediately
+    HPA status.lastScaleTime advances about every ~5 minutes
+    Catch AbleToScale reason=SucceededRescale with currentReplicas=10
+      desiredReplicas=5 right as HPA hits back
+    ManifestWork typically remains Applied=True
+
+
+Clean slate (re-run / switch scenario)
+--------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-hpa-replicas-pingpong-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+    kubectl --context $ctx delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex
+  - Expect Applied=False (this bug is drift / slow ping-pong, not stuck apply)
+  - Poll for only ~2 minutes and conclude there is no fight — wait for the
+    ~5 minute work-agent reassert
+  - Blame the 5 minute gap on HPA being slow; HPA clamps immediately once
+    edge is back at hub replicas — the slow side is the reassert
+  - Omit replicas on the Hub Deployment and claim the bug is fixed —
+    that is the known workaround, not the desired product behavior
+  - Rely on CPU load / metrics-server to trigger the loop; out-of-bounds
+    min/max is enough
+
+
+Expected behaviour
+------------------
+  1. Users should be able to set an initial / preferred replica count on the
+     Hub Deployment at create time, while allowing an edge HPA to own
+     replicas afterward without ManifestWork periodically overwriting it.
+
+  2. Or document a first-class pattern: omit replicas from downsynced
+     Deployment, drive scale only via HPA / Scale subresource, etc. —
+     but that should be an explicit supported pattern, not a silent fight.
+
+  3. Ideally: create-time baseline replicas + runtime ignore/tolerate for
+     controller-owned fields (replicas) once an HPA is present on the spoke.

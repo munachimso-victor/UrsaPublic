@@ -1,0 +1,472 @@
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ chmod +x install_requirements.sh
+  ./install_requirements.sh
+==> Manual repro directory: /users/mvn27/Ursa/manual_tests/pvc_volumename_repro
+==> Detected platform: linux/amd64
+==> Installing apt packages (curl, docker.io)...
+==> Docker OK: 29.1.3
+==> kubectl already installed: Client Version: v1.36.3
+==> helm already installed: v3.21.3+g1ad6e68
+==> kind already installed: kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64
+==> kflex already installed: WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z
+Could not connect to a Kubernetes cluster: error building kubeconfig: stat /users/mvn27/.kube/config: no such file or directory
+==> clusteradm already installed: client                version :v0.10.1-0-g18a991c
+==> Raising inotify limits...
+==> Running KubeStellar v0.29.0 pre-req check...
+✔ KubeFlex (Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z)
+✔ OCM CLI (:v0.10.1-0-g18a991c)
+✔ Helm (v3.21.3)
+✔ helm can fetch public charts
+✔ kubectl (v1.36.3)
+✔ Docker (Docker version 29.1.3, build 29.1.3-0ubuntu3~22.04.2)
+✔ Kind (kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64)
+✔ fs.inotify.max_user_watches is 524288
+✔ fs.inotify.max_user_instances is 8192
+==> KubeStellar pre-req check passed.
+
+================================================================================
+Host prerequisites installed.
+================================================================================
+
+  If docker group was just added: newgrp docker  (or log out/in)
+
+  Verify:
+    docker info
+    kubectl version --client
+    helm version
+    kind version
+    kflex version
+    clusteradm version
+
+  Next:
+    export KUBECONFIG=~/.kube/kubeflex
+    ./setup_kubestellar.sh
+
+================================================================================
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ ./setup_kubestellar.sh
+Using Workload Prefix: edge
+Using Host Cluster: kubeflex
+Using Host Port: 9443
+Using Kubeconfig Path: /users/mvn27/.kube/kubeflex
+==================================================
+CLEANUP INITIATED: Wiping clusters and contexts...
+Target Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Deleting Host Cluster: kubeflex...
+Deleting cluster "kubeflex" ...
+Deleted nodes: ["kubeflex-control-plane"]
+Deleting Workload Cluster: edge-1...
+Deleting cluster "edge-1" ...
+Deleted nodes: ["edge-1-control-plane"]
+Deleting Workload Cluster: edge-2...
+Deleting cluster "edge-2" ...
+Deleted nodes: ["edge-2-control-plane"]
+Deleting Workload Cluster: edge-3...
+Deleting cluster "edge-3" ...
+Deleted nodes: ["edge-3-control-plane"]
+Cleaning up KubeStellar contexts...
+Cleanup complete.
+--------------------------------------------------
+==================================================
+Starting KubeStellar Setup Scenario
+Host Cluster: kubeflex
+Member Clusters: edge-1 edge-2 edge-3
+Using Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Creating Kind cluster kubeflex with SSL passthrough...
+Creating "kubeflex" kind cluster with SSL passthrougn and 9443 port mapping...
+No kind clusters found.
+Creating cluster "kubeflex" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kubeflex"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kubeflex
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+Installing an nginx ingress...
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+Patching nginx ingress to enable SSL passthrough...
+deployment.apps/ingress-nginx-controller patched
+Waiting for nginx ingress with SSL passthrough to be ready...
+Waiting for nginx ingress controller deployment to be rolled out...
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "ingress-nginx-controller" successfully rolled out
+Waiting for nginx ingress controller pod to be ready...
+pod/ingress-nginx-controller-6856c8b665-qcj6l condition met
+Setting context to "kind-kubeflex"...
+Switched to context "kind-kubeflex".
+--------------------------------------------------
+Installing KubeStellar Core Helm Chart (v0.29.0)...
+Release "ks-core" does not exist. Installing it now.
+Pulled: ghcr.io/kubestellar/kubestellar/core-chart:0.29.0
+Digest: sha256:3b9550f95e99a4ed2361c53b045f7198d12c4035ec58bf7d5c83c74f7d7e3c10
+NAME: ks-core
+LAST DEPLOYED: Tue Jul 28 00:30:20 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+For your convenience you will probably want to add contexts to your
+kubeconfig named after the non-host-type control planes (WDSes and
+ITSes) that you just created (a host-type control plane is just an
+alias for the KubeFlex hosting cluster). You can do that with the
+following `kflex` commands; each creates a context and makes it the
+current one. See
+https://github.com/kubestellar/kubestellar/blob/0.29.0/docs/content/direct/core-chart.md#kubeconfig-files-and-contexts-for-control-planes
+for a way to do this without using `kflex`.
+Start by setting your current kubeconfig context to the one you used
+when installing this chart.
+
+kubectl config use-context $the_one_where_you_installed_this_chart
+kflex ctx --set-current-for-hosting # make sure the KubeFlex CLI's hidden state is right for what the Helm chart just did
+
+kflex ctx --overwrite-existing-context its1
+kflex ctx --overwrite-existing-context wds1
+
+Finally, you can use `kflex ctx` to switch back to the kubeconfig
+context for your KubeFlex hosting cluster.
+--------------------------------------------------
+Configuring KubeFlex contexts...
+Switched to context "kind-kubeflex".
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Checking for saved hosting cluster context...
+✔ Switching to hosting cluster context...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context its1 not found (context its1 not found), trying to load from server...
+✔ Switching to context its1...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context wds1 not found (context wds1 not found), trying to load from server...
+✔ Switching to context wds1...
+--------------------------------------------------
+Waiting for ITS (its1) to be fully initialized...
+Waiting for its-hub-init hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for its-hub-init job completion...
+job.batch/its-hub-init condition met
+Waiting for install-status-addon hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for install-status-addon job completion...
+job.batch/install-status-addon condition met
+ITS initialization complete.
+--------------------------------------------------
+Creating and Registering Workload Clusters...
+Processing edge-1...
+Creating cluster "edge-1" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-1 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-1" renamed to "edge-1".
+Registering edge-1 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTAwLCJpYXQiOjE3ODUyMjA1MDAsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTAwLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.O-5C13nz5ADv5WCjekeLIs0BUbpHNCjx2iCX1pl9Z-rxV3_IQwXGr-mFadFp_91zS5rWmdKbpYIRJqUhp5KAdc1Lo5DV-pS5UozHS3ElBgNGVL891CZR6f8T34J6uQILbFPpWfXfnWzr28wRzgKB9KD81jmIHqyjZ_wd6O_z02ElOe0zNC2wbFYSC8gqkb-zJTbsiOeUjL0Z0yV5q0Dj6iG46SRpXONsCBD2D0kj6zqmtD5vo4hxgJv3hFn_3crTY0GwRuA_9_-JMYlCywKzgSTsxL20l_pjugG4hTN6FeHpM2gGdlpjxYPCCmiw2GzeCRsRWR2hsTQjgT0IqzrI5g --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-1 --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-1
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-2...
+Creating cluster "edge-2" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-2 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-2" renamed to "edge-2".
+Registering edge-2 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTc0LCJpYXQiOjE3ODUyMjA1NzQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTc0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.D1czrD5-KDhb-AJZ8CYn-oY-Kw5EeNZQJdpifKORC0cXZ1cO8xJR1H_nwYX6ppzNYmGStapahx3Rf6KPyNKd56c9NyeNudSVmFF6Cjns6ECMqC8FmmigiY1ScVr8n3w7-4AcrGMuVZtIj6YpGf9vVMv7LUL1J-7547WXdFtM_aum5O7y65vb6NnXlWGWltCG714K4uJV_Md1ugRTLp8oWum_xXvONdZZhfzyTFD-nDMLET3VpyykBDyGg0kSu-w4ceJ7uKO6EK91LnxE_pyNQ0wje8TP4RGQfUctCjCsH_P5MVO_Z6rm3p-xGVz1B2P1pEugAv_grKBnP72e2u4KqA --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-2 --context edge-2 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-2
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-3...
+Creating cluster "edge-3" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-3"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-3 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Context "kind-edge-3" renamed to "edge-3".
+Registering edge-3 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MjU0LCJpYXQiOjE3ODUyMjA2NTQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNjU0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.XZPz64enTWw-CmcqWHr3cmLbyVGdP0k1_EVobV65Qi7JFlTREehOSkQ1RCRWx8LyygyD9OYiZtPeoTVKtZN49gi3naODjiEtOqb0DPVqcVpPb3tIHXtl2OXHfdiJ_rFgNlvDNAu7w6884m9s5KpWd-nAgJGABwXfhnW8VCU-3XpExHrCGmgMLFmqzKDIcKx49tAoVfJCfIDpkRA8ouawQ2ehB2ECO7MQsgzAG1TxsJ4rKqXYL6jHWDl8drioBQA7JMEh_M45BVUqCElSfsyaysqpmt3T-INKx7mKgp22NwairL3GP125ayCH3j7kaRwCe7x86cY64khvBezojWprgg --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-3 --context edge-3 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-3
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+--------------------------------------------------
+Waiting for CSRs to appear in ITS1...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 3 pending CSRs (Need 3)...
+All required CSRs found.
+--------------------------------------------------
+Approving CSRs...
+Starting approve csrs for the cluster edge-1
+CSR edge-1-pxk7s approved
+set hubAcceptsClient to true for managed cluster edge-1
+
+ Your managed cluster edge-1 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-2
+CSR edge-2-rtt9j approved
+set hubAcceptsClient to true for managed cluster edge-2
+
+ Your managed cluster edge-2 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-3
+CSR edge-3-n5jcn approved
+set hubAcceptsClient to true for managed cluster edge-3
+
+ Your managed cluster edge-3 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+--------------------------------------------------
+Verifying and Labeling Clusters...
+NAME     HUB ACCEPTED   MANAGED CLUSTER URLS                JOINED   AVAILABLE   AGE
+edge-1   true           https://edge-1-control-plane:6443                        2m23s
+edge-2   true           https://edge-2-control-plane:6443                        65s
+edge-3   true           https://edge-3-control-plane:6443                        4s
+Labeling edge-1...
+managedcluster.cluster.open-cluster-management.io/edge-1 labeled
+Labeling edge-2...
+managedcluster.cluster.open-cluster-management.io/edge-2 labeled
+Labeling edge-3...
+managedcluster.cluster.open-cluster-management.io/edge-3 labeled
+==================================================
+Setup Complete!
+Configuration saved to: /users/mvn27/.kube/kubeflex
+Contexts available: kind-kubeflex, its1, wds1, wds2, edge-1 edge-2 edge-3
+==================================================
+...
+mvn27@node0:~/Ursa/manual_tests/job_ttl_rerun_repro$ kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/job_ttl_rerun_repro$ export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 apply -f job_seed.yaml
+  kubectl --context wds1 apply -f job_policy.yaml
+namespace/ursa-namespace-template created
+configmap/ursa-configmap-template created
+job.batch/ursa-job-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-job-ttl-rerun-repro created
+mvn27@node0:~/Ursa/manual_tests/job_ttl_rerun_repro$ for i in $(seq 1 12); do
+    echo "--- poll $i ---"
+    kubectl --context wds1 get job -n ursa-namespace-template ursa-job-template -o wide
+    kubectl --context edge-1 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-1: NotFound"
+    kubectl --context edge-2 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-2: NotFound"
+    kubectl --context edge-1 get pods -n ursa-namespace-template \
+      -l job-name=ursa-job-template -o wide 2>&1 || true
+    sleep 70
+  done
+--- poll 1 ---
+NAME                COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      9s    data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS    COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Running   0/1           7s         7s    data-processor   busybox   batch.kubernetes.io/controller-uid=541d2be7-2833-43c8-ad0a-8367c3c0ffbb
+NAME                STATUS    COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Running   0/1           7s         7s    data-processor   busybox   batch.kubernetes.io/controller-uid=96ecf3aa-b90e-46c6-b81a-96e561edf83d
+NAME                      READY   STATUS    RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-t6hjc   1/1     Running   0          7s    10.244.0.168   edge-1-control-plane   <none>           <none>
+--- poll 2 ---
+NAME                COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      80s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+Error from server (NotFound): jobs.batch "ursa-job-template" not found
+edge-1: NotFound
+Error from server (NotFound): jobs.batch "ursa-job-template" not found
+edge-2: NotFound
+No resources found in ursa-namespace-template namespace.
+--- poll 3 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      2m30s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        63s   data-processor   busybox   batch.kubernetes.io/controller-uid=97671988-69ec-4033-80d3-9817eb28ea16
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           17s        65s   data-processor   busybox   batch.kubernetes.io/controller-uid=d8681b77-850c-40fa-879a-d9b1b17cb3c2
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-fqpz4   0/1     Completed   0          63s   10.244.0.169   edge-1-control-plane   <none>           <none>
+--- poll 4 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      3m41s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        51s   data-processor   busybox   batch.kubernetes.io/controller-uid=2e670275-8861-44a7-838d-4f55fd7bc4c2
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        53s   data-processor   busybox   batch.kubernetes.io/controller-uid=459728aa-b7bf-40a1-945c-c811cbf1f718
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-4w5gn   0/1     Completed   0          51s   10.244.0.170   edge-1-control-plane   <none>           <none>
+--- poll 5 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      4m51s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           17s        39s   data-processor   busybox   batch.kubernetes.io/controller-uid=cc5bded5-20fa-47ed-a2e6-1cf79d435661
+Error from server (NotFound): jobs.batch "ursa-job-template" not found
+edge-2: NotFound
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-xnqgk   0/1     Completed   0          39s   10.244.0.171   edge-1-control-plane   <none>           <none>
+--- poll 6 ---
+NAME                COMPLETIONS   DURATION   AGE    CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      6m1s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        26s   data-processor   busybox   batch.kubernetes.io/controller-uid=7266923f-9a42-41c6-8e8d-560ccc93496b
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        63s   data-processor   busybox   batch.kubernetes.io/controller-uid=aff7ef5f-9065-428c-a31f-5b467857f237
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-gj9mf   0/1     Completed   0          27s   10.244.0.172   edge-1-control-plane   <none>           <none>
+--- poll 7 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      7m12s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS    COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Running   0/1           15s        15s   data-processor   busybox   batch.kubernetes.io/controller-uid=273ea518-3c3a-434f-935d-1a4ba0dd8c3a
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        50s   data-processor   busybox   batch.kubernetes.io/controller-uid=41f2d0c4-4fb7-4071-ae06-fda3206019b6
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-rc5xm   0/1     Completed   0          15s   10.244.0.173   edge-1-control-plane   <none>           <none>
+--- poll 8 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      8m22s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS    COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Running   0/1           3s         3s    data-processor   busybox   batch.kubernetes.io/controller-uid=e01d854e-7d0f-4982-a641-93aed12ad176
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        38s   data-processor   busybox   batch.kubernetes.io/controller-uid=f9cb8a47-32b9-4c82-9abf-96c6ae8d1f81
+NAME                      READY   STATUS    RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-bdfrx   1/1     Running   0          4s    10.244.0.174   edge-1-control-plane   <none>           <none>
+--- poll 9 ---
+NAME                COMPLETIONS   DURATION   AGE     CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      9m33s   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        74s   data-processor   busybox   batch.kubernetes.io/controller-uid=e01d854e-7d0f-4982-a641-93aed12ad176
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        34s   data-processor   busybox   batch.kubernetes.io/controller-uid=26115496-2aa4-41d6-8cf7-53d3174c7c83
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-bdfrx   0/1     Completed   0          74s   10.244.0.174   edge-1-control-plane   <none>           <none>
+--- poll 10 ---
+NAME                COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      10m   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           16s        62s   data-processor   busybox   batch.kubernetes.io/controller-uid=e469690c-b015-4087-8107-0c7163900425
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        21s   data-processor   busybox   batch.kubernetes.io/controller-uid=1e3a8c9e-7630-447a-b2d4-940915832e51
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-6jn5s   0/1     Completed   0          62s   10.244.0.175   edge-1-control-plane   <none>           <none>
+--- poll 11 ---
+NAME                COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      11m   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        55s   data-processor   busybox   batch.kubernetes.io/controller-uid=b341c60b-1356-46ce-8e38-aa1d39ade5f0
+NAME                STATUS    COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Running   0/1           9s         9s    data-processor   busybox   batch.kubernetes.io/controller-uid=210da4c2-3676-46d6-b545-91459e1dc181
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-qjl6c   0/1     Completed   0          55s   10.244.0.176   edge-1-control-plane   <none>           <none>
+--- poll 12 ---
+NAME                COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   0/1                      13m   data-processor   busybox   batch.kubernetes.io/controller-uid=5170c6bb-6b93-465e-812d-aa0de812ba61
+NAME                STATUS     COMPLETIONS   DURATION   AGE   CONTAINERS       IMAGES    SELECTOR
+ursa-job-template   Complete   1/1           15s        42s   data-processor   busybox   batch.kubernetes.io/controller-uid=41b15565-5408-41d9-9c5a-9a301b04cbf8
+Error from server (NotFound): jobs.batch "ursa-job-template" not found
+edge-2: NotFound
+NAME                      READY   STATUS      RESTARTS   AGE   IP             NODE                   NOMINATED NODE   READINESS GATES
+ursa-job-template-znx5p   0/1     Completed   0          42s   10.244.0.177   edge-1-control-plane   <none>           <none>
+mvn27@node0:~/Ursa/manual_tests/job_ttl_rerun_repro$

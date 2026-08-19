@@ -1,0 +1,525 @@
+Manual repro: ServiceAccount warm list-field updates do not downsync to edges
+=============================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this
+folder:
+
+  manual_tests/serviceaccount_update_repro/
+
+
+Goal
+----
+Reproduce KubeStellar downsync gap for ServiceAccount **list-field** updates on a
+warm cluster (object already exists on edges):
+
+  1. Apply baseline ServiceAccount + BindingPolicy on WDS; object appears on edges.
+  2. Change a list field on WDS (secrets[]).
+  3. WDS shows the new desired state.
+  4. Edge ServiceAccount stays at the **old** state (no inventory diff / no patch).
+  5. ManifestWork may still report Applied=True / Available=True (misleading).
+  6. Delete ServiceAccount on the **edge only** — klusterlet recreates from hub
+     ManifestWork (create path works; in-place update does not).
+
+Metadata (labels) warm updates **do** propagate — see Step 6 (control case).
+
+
+Files in this folder
+--------------------
+  REPRO.txt                          (this guide)
+  sample.log.txt                     (example full run: setup + Steps 3–6 output)
+  cleanup.sh                         (remove repro workloads from WDS + edges)
+
+  case_label_only/                   (control — metadata propagates)
+    seed.yaml, binding-policy.yaml, serviceaccount-add-label.yaml
+
+  case_secrets_list/                 (primary repro — secrets[] grow)
+    seed.yaml, binding-policy.yaml, add-second-secret.yaml
+
+  case_combined_update/              (Step 7 — label + secrets[] + imagePullSecrets[] together)
+    seed.yaml, binding-policy.yaml, combined-update.yaml
+
+  setup_kubestellar.sh               (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+
+
+Sync-plane identity chain (for Steps 3–5)
+-----------------------------------------
+  Each downsynced object is tracked through three linked identities:
+
+    edge ServiceAccount
+      └─ ownerReference → AppliedManifestWork (cluster-scoped on edge)
+            └─ spec.manifestWorkName → ManifestWork (namespace=edge-1 on its1)
+
+  Record name + uid (+ generation for ManifestWork) at each phase and compare.
+  ManifestWork lives on ITS only; AppliedManifestWork lives on the edge only.
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+
+bash <<'EOF'
+set -euo pipefail
+ARCH=amd64
+[ "$(uname -m)" = aarch64 ] && ARCH=arm64
+
+sudo apt-get update
+sudo apt-get install -y docker.io curl git
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER" || true
+# check_pre_req sysctl tests use "docker run"; sg applies docker group without re-login
+if ! docker info >/dev/null 2>&1; then
+  sg docker -c "docker info"
+fi
+
+cd /tmp
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${ARCH}/kubectl"
+chmod +x kubectl && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm -f kubectl
+
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+curl -Lo kind "https://kind.sigs.k8s.io/dl/latest/kind-linux-${ARCH}"
+chmod +x kind && sudo install -o root -g root -m 0755 kind /usr/local/bin/kind
+rm -f kind
+
+curl -s https://raw.githubusercontent.com/kubestellar/kubeflex/main/scripts/install-kubeflex.sh \
+  | sudo bash -s -- --ensure-folder /usr/local/bin --strip-bin
+
+bash <(curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh) 0.10.1
+
+sudo sysctl -w fs.inotify.max_user_instances=8192
+sudo sysctl -w fs.inotify.max_user_watches=524288
+if docker info >/dev/null 2>&1; then
+  bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) \
+    kflex ocm helm kubectl docker kind
+else
+  sg docker -c "bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) kflex ocm helm kubectl docker kind"
+fi
+
+docker info
+kubectl version --client
+helm version
+kind version
+kflex version
+clusteradm version
+EOF
+
+
+Step 2 — Cluster setup (copy/paste)
+-----------------------------------
+  cd manual_tests/serviceaccount_update_repro   # from Ursa repo root
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  # setup_kubestellar.sh labels managed clusters name=edge-1/edge-2/edge-3
+  # (required by BindingPolicy selectors in this repro).
+  kubectl --context its1 get managedclusters --show-labels
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+  Note on fix-klusterlet-rbac.yaml:
+    That file (in ../pvc_null_storageclass_repro/) grants klusterlet-work-sa
+    permissions for cluster-scoped PV, StorageClass, and RuntimeClass only.
+    ServiceAccount/Secret/Namespace are namespaced and do not need that patch.
+
+  ManifestWork is on ITS (its1); AppliedManifestWork is cluster-scoped on edges:
+    kubectl --context edge-1 get manifestwork          # → error (expected)
+    kubectl --context edge-1 get appliedmanifestwork   # cluster-scoped
+
+
+Step 3 — Reproduce: secrets[] grow (primary case, copy/paste)
+-------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/serviceaccount_update_repro   # from Ursa repo root
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+
+  ./cleanup.sh
+  sleep 60
+
+  # 3a. Baseline — one secrets[] entry, initial downsync
+  kubectl --context wds1 apply -f case_secrets_list/seed.yaml
+  kubectl --context wds1 apply -f case_secrets_list/binding-policy.yaml
+
+  echo "Waiting 230s (Ursa engine sync window)..."
+  sleep 230
+
+  # Baseline check — one secret on WDS and both edges
+  kubectl --context wds1 get sa "$SA" -n "$NS" -o jsonpath='WDS secrets={.secrets}{"\n"}'
+  kubectl --context edge-1 get sa "$SA" -n "$NS" -o jsonpath='edge-1 secrets={.secrets}{"\n"}'
+  kubectl --context edge-2 get sa "$SA" -n "$NS" -o jsonpath='edge-2 secrets={.secrets}{"\n"}'
+
+  # 3c. Snapshot sync-plane IDs BEFORE warm update (save output for Step 4 compare)
+  for EDGE in edge-1 edge-2; do
+    echo "=== SYNC TRACE $EDGE phase=baseline-before-warm-update ==="
+    AMW_NAME=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].name}')
+    AMW_UID=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].uid}')
+    MW_NAME=$(kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='{.spec.manifestWorkName}')
+    kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+      -o jsonpath='ITS ManifestWork name={.metadata.name} uid={.metadata.uid} generation={.metadata.generation} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='edge AppliedManifestWork name={.metadata.name} uid={.metadata.uid} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='edge ServiceAccount uid={.metadata.uid} rv={.metadata.resourceVersion}{"\n"}'
+  done
+
+  # 3b. Warm update — grow secrets[] on WDS only
+  kubectl --context wds1 apply -f case_secrets_list/add-second-secret.yaml
+
+  echo "Waiting 230s for downsync..."
+  sleep 230
+
+
+Step 4 — Verify the bug (copy/paste)
+------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+
+  kubectl --context wds1 get sa "$SA" -n "$NS" -o jsonpath='WDS secrets={.secrets}{"\n"}'
+
+  kubectl --context edge-1 get sa "$SA" -n "$NS" \
+    -o jsonpath='edge-1 secrets={.secrets} uid={.metadata.uid}{"\n"}'
+
+  kubectl --context edge-2 get sa "$SA" -n "$NS" \
+    -o jsonpath='edge-2 secrets={.secrets} uid={.metadata.uid}{"\n"}'
+
+  # Sync-plane IDs AFTER warm update — compare to Step 3c baseline output
+  for EDGE in edge-1 edge-2; do
+    echo "=== SYNC TRACE $EDGE phase=after-warm-update ==="
+    AMW_NAME=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].name}')
+    AMW_UID=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].uid}')
+    MW_NAME=$(kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='{.spec.manifestWorkName}')
+    kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+      -o jsonpath='ITS ManifestWork name={.metadata.name} uid={.metadata.uid} generation={.metadata.generation} observedGen={.status.conditions[?(@.type=="Applied")].observedGeneration} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+      -o jsonpath='ITS MW Applied={.status.conditions[?(@.type=="Applied")].status} Available={.status.conditions[?(@.type=="Available")].status}{"\n"}'
+    kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='edge AppliedManifestWork name={.metadata.name} uid={.metadata.uid} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='edge ServiceAccount uid={.metadata.uid} rv={.metadata.resourceVersion}{"\n"}'
+  done
+
+  SUCCESS CRITERIA:
+    WDS ServiceAccount secrets[] has ursa-opaquesecret-template AND
+      ursa-basicauthsecret-template
+    edge-1 / edge-2 still have only ursa-opaquesecret-template
+    ITS ManifestWork: name + uid UNCHANGED vs baseline; generation INCREASED
+    edge AppliedManifestWork: name + uid UNCHANGED vs baseline
+    edge ServiceAccount: uid UNCHANGED vs baseline (same object, stale spec)
+    ManifestWork Applied=True, Available=True despite stale edge spec
+
+
+Step 5 — Verify edge delete recovery (copy/paste)
+-------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+
+  # Record IDs before delete (compare in output after recreate)
+  for EDGE in edge-1 edge-2; do
+    echo "=== SYNC TRACE $EDGE phase=before-edge-delete ==="
+    AMW_NAME=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].name}')
+    AMW_UID=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].uid}')
+    MW_NAME=$(kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='{.spec.manifestWorkName}')
+    kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+      -o jsonpath='ITS ManifestWork name={.metadata.name} uid={.metadata.uid} generation={.metadata.generation}{"\n"}'
+    kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='edge AppliedManifestWork name={.metadata.name} uid={.metadata.uid}{"\n"}'
+    kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='edge ServiceAccount uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+  done
+
+  # Delete on EDGES ONLY — do NOT delete on wds1
+  kubectl --context edge-1 delete sa "$SA" -n "$NS"
+  kubectl --context edge-2 delete sa "$SA" -n "$NS"
+
+  echo "Waiting 90s for klusterlet to recreate from hub ManifestWork..."
+  sleep 90
+
+  kubectl --context edge-1 get sa "$SA" -n "$NS" \
+    -o jsonpath='edge-1 secrets={.secrets} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+
+  kubectl --context edge-2 get sa "$SA" -n "$NS" \
+    -o jsonpath='edge-2 secrets={.secrets} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+
+  # WDS unchanged
+  kubectl --context wds1 get sa "$SA" -n "$NS" -o jsonpath='WDS secrets={.secrets}{"\n"}'
+
+  # Sync-plane IDs AFTER edge delete + recreate
+  for EDGE in edge-1 edge-2; do
+    echo "=== SYNC TRACE $EDGE phase=after-edge-delete-recreate ==="
+    AMW_NAME=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].name}')
+    AMW_UID=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].uid}')
+    MW_NAME=$(kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='{.spec.manifestWorkName}')
+    kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+      -o jsonpath='ITS ManifestWork name={.metadata.name} uid={.metadata.uid} generation={.metadata.generation}{"\n"}'
+    kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+      -o jsonpath='edge AppliedManifestWork name={.metadata.name} uid={.metadata.uid}{"\n"}'
+    kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+      -o jsonpath='edge ServiceAccount uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+  done
+
+  SUCCESS CRITERIA:
+    edge-1 / edge-2 now have BOTH secrets[] entries (match WDS / ManifestWork)
+    edge ServiceAccount uid CHANGED vs before-edge-delete (new object on edge)
+    ITS ManifestWork name + uid UNCHANGED (same hub work item; create path applied)
+    edge AppliedManifestWork name usually UNCHANGED; uid may be unchanged
+    WDS ServiceAccount was never deleted
+
+
+Step 6 — Control: metadata label propagates (optional, copy/paste)
+------------------------------------------------------------------
+  Proves labels warm-update without edge delete. Not the failing bug class.
+  Contrast with Step 4: there secrets[] stayed stale; here labels should move.
+
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/serviceaccount_update_repro   # from Ursa repo root
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+  LABEL_KEY=ursa.repro/update
+  LABEL_VAL=label-only
+
+  ./cleanup.sh && sleep 60
+
+  kubectl --context wds1 apply -f case_label_only/seed.yaml
+  kubectl --context wds1 apply -f case_label_only/binding-policy.yaml
+  echo "Waiting 230s for initial downsync..."
+  sleep 230
+
+  # --- BEFORE warm update (label should be absent) ---
+  echo "=== BEFORE label apply ==="
+  for CTX in wds1 edge-1 edge-2; do
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath="$CTX labels={.metadata.labels} uid={.metadata.uid}{\"\\n\"}"
+  done
+
+  # --- Warm update: add label on WDS only ---
+  kubectl --context wds1 apply -f case_label_only/serviceaccount-add-label.yaml
+  echo "Waiting 230s for downsync..."
+  sleep 230
+
+  # --- AFTER warm update (label should appear on WDS and both edges) ---
+  echo "=== AFTER label apply ==="
+  for CTX in wds1 edge-1 edge-2; do
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath="$CTX labels={.metadata.labels} uid={.metadata.uid}{\"\\n\"}"
+  done
+
+  # Optional: same table format as kubectl get --show-labels
+  kubectl --context wds1 get sa "$SA" -n "$NS" --show-labels
+  kubectl --context edge-1 get sa "$SA" -n "$NS" --show-labels
+  kubectl --context edge-2 get sa "$SA" -n "$NS" --show-labels
+
+  SUCCESS CRITERIA:
+    BEFORE: ursa.repro/update absent on WDS and both edges
+    AFTER:  ursa.repro/update=label-only on WDS AND both edges
+    edge ServiceAccount uid UNCHANGED before vs after (same object, no delete)
+
+
+Step 7 — Combined warm update: label + secrets[] + imagePullSecrets[] (copy/paste)
+----------------------------------------------------------------------------------
+  One WDS apply changes metadata and both list fields at once. Checks whether edges
+  pick up all three or only metadata (expected from Steps 4 and 6: labels yes, lists no).
+
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/serviceaccount_update_repro   # from Ursa repo root
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+
+  ./cleanup.sh && sleep 60
+
+  kubectl --context wds1 apply -f case_combined_update/seed.yaml
+  kubectl --context wds1 apply -f case_combined_update/binding-policy.yaml
+  echo "Waiting 230s for initial downsync..."
+  sleep 230
+
+  # --- BEFORE combined warm update ---
+  echo "=== BEFORE combined update ==="
+  for CTX in wds1 edge-1 edge-2; do
+    echo "--- $CTX ---"
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  labels={.metadata.labels}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  secrets={.secrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  imagePullSecrets={.imagePullSecrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  uid={.metadata.uid}{"\n"}'
+  done
+
+  # --- Single warm apply on WDS (label + both list fields) ---
+  kubectl --context wds1 apply -f case_combined_update/combined-update.yaml
+  echo "Waiting 230s for downsync..."
+  sleep 230
+
+  # --- AFTER combined warm update ---
+  echo "=== AFTER combined update ==="
+  for CTX in wds1 edge-1 edge-2; do
+    echo "--- $CTX ---"
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  labels={.metadata.labels}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  secrets={.secrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  imagePullSecrets={.imagePullSecrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  uid={.metadata.uid}{"\n"}'
+  done
+
+  # Optional sync-plane trace (edge-1)
+  EDGE=edge-1
+  AMW_NAME=$(kubectl --context "$EDGE" get sa "$SA" -n "$NS" \
+    -o jsonpath='{.metadata.ownerReferences[?(@.kind=="AppliedManifestWork")].name}')
+  MW_NAME=$(kubectl --context "$EDGE" get appliedmanifestwork "$AMW_NAME" \
+    -o jsonpath='{.spec.manifestWorkName}')
+  kubectl --context its1 get manifestwork -n "$EDGE" "$MW_NAME" \
+    -o jsonpath='ITS MW generation={.metadata.generation} Applied={.status.conditions[?(@.type=="Applied")].status} Available={.status.conditions[?(@.type=="Available")].status}{"\n"}'
+
+  SUCCESS CRITERIA (expected partial propagation):
+    WDS AFTER:
+      label ursa.repro/phase=combined-update
+      secrets: opaque + basicauth
+      imagePullSecrets: dockerconfigjson + dockercfg
+    edge-1 / edge-2 AFTER:
+      label ursa.repro/phase=combined-update present (metadata propagated)
+      secrets[] still baseline only (basicauth missing)
+      imagePullSecrets[] still baseline only (dockercfg missing)
+      ServiceAccount uid UNCHANGED vs BEFORE (same object)
+    If all three fields match WDS on edges, warm list-field update worked (bug NOT reproduced)
+
+
+Step 8 — Edge delete recovery after Step 7 (all fields from hub, copy/paste)
+-----------------------------------------------------------------------------
+  Continues immediately after Step 7 (do not run cleanup). Edges still have the
+  label but stale list fields. Deleting the ServiceAccount on the edge only should
+  recreate it from the current ManifestWork with label + secrets[] + imagePullSecrets[]
+  all matching WDS.
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  NS=ursa-namespace-template
+  SA=ursa-serviceaccount-template
+
+  # --- BEFORE edge delete (stale lists from Step 7) ---
+  echo "=== BEFORE edge delete (expect partial state from Step 7) ==="
+  for CTX in edge-1 edge-2; do
+    echo "--- $CTX ---"
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  labels={.metadata.labels}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  secrets={.secrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  imagePullSecrets={.imagePullSecrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  uid={.metadata.uid}{"\n"}'
+  done
+
+  kubectl --context wds1 get sa "$SA" -n "$NS" \
+    -o jsonpath='WDS (hub desired) labels={.metadata.labels} secrets={.secrets} imagePullSecrets={.imagePullSecrets}{"\n"}'
+
+  # Delete on EDGES ONLY — do NOT delete on wds1
+  kubectl --context edge-1 delete sa "$SA" -n "$NS"
+  kubectl --context edge-2 delete sa "$SA" -n "$NS"
+
+  echo "Waiting 90s for klusterlet to recreate from hub ManifestWork..."
+  sleep 90
+
+  # --- AFTER edge delete + recreate ---
+  echo "=== AFTER edge delete + recreate ==="
+  for CTX in wds1 edge-1 edge-2; do
+    echo "--- $CTX ---"
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  labels={.metadata.labels}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  secrets={.secrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  imagePullSecrets={.imagePullSecrets}{"\n"}'
+    kubectl --context "$CTX" get sa "$SA" -n "$NS" \
+      -o jsonpath='  uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+  done
+
+  SUCCESS CRITERIA:
+    BEFORE edge delete: edges have label but only baseline secrets[] / imagePullSecrets[]
+    AFTER edge delete: edge-1 / edge-2 match WDS on all three:
+      label ursa.repro/phase=combined-update
+      secrets: opaque + basicauth
+      imagePullSecrets: dockerconfigjson + dockercfg
+    edge ServiceAccount uid CHANGED vs Step 7 AFTER (new object on edge)
+    WDS ServiceAccount unchanged (never deleted)
+    Proves hub ManifestWork already held full desired state; create path works,
+    in-place warm update of list fields does not
+
+
+Clean slate (re-run only)
+-------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/serviceaccount_update_repro   # from Ursa repo root
+
+  ./cleanup.sh
+  sleep 60
+
+  # Confirm namespace gone before re-running Step 3:
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex (edge-* / wds1 contexts live there)
+  - Apply manifests from the Ursa repo root (use this folder; paths are relative)
+  - Look for ManifestWork on edge clusters (use its1 for ManifestWork, edge for live SA)
+  - Delete ServiceAccount on wds1 when testing edge-delete recovery (delete on edges only)
+  - Use clusteradm v1.x with KubeStellar 0.29 hub (token SA mismatch)
+  - Expect monolith Ursa run to fail — use __pert_* slices or this manual repro
+
+
+Expected behaviour
+------------------
+  After a warm update on WDS, BindingPolicy/ManifestWork should patch the existing
+  ServiceAccount on bound edges so hub and edge converge for both metadata and
+  spec list fields (secrets[]).
+
+  Bug classification:
+    - metadata (labels):      warm UPDATE works (Step 6 control)
+    - spec list fields:       warm UPDATE fails (Steps 3–4)
+    - combined apply:         metadata propagates, list fields stale (Step 7)
+    - edge delete + recreate: CREATE from hub ManifestWork works (Steps 5, 8)
+
+  Ursa ledger text on automated runs:
+    No add/update in inventory diff for seed-changed object(s):
+      [('ServiceAccount', 'ursa-namespace-template/ursa-serviceaccount-template')]
+
+  Re-run automated slice (clusters must already exist):
+
+    cd /path/to/Ursa    # repo root containing engine.py
+    python3 engine.py \
+      --run-suite test_2026-06-28_02-25/run_ursa-bp-serviceaccount__pert_ursa-dockerconfigjsonsecret-template \
+      --skip-setup

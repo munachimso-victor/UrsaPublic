@@ -1,0 +1,69 @@
+Case 4: Ursa-exact dockerconfigjson (failing policy shape)
+==========================================================
+
+Matches what engine.py --run-suite applies for:
+  test_2026-06-25_00-27/run_ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template
+
+Differs from case1_namespace_only:
+  - Policy name: ursa-bp-dockerconfigjsonsecret (was ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template)
+  - Single merged downsync clause (no statusCollectors on namespace)
+  - Seed labels: only app.kubernetes.io/managed-by=ursa-testing (no repro.* labels)
+
+Prerequisites
+-------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+Run (minimal — no Ursa soft_reset)
+----------------------------------
+  cd manual_tests/secret_downsync_repro/dockerconfigjsonsecret
+
+  ./cleanup.sh
+  sleep 60
+
+  kubectl --context wds1 apply -f case4_ursa_exact/seed.yaml
+  kubectl --context wds1 apply -f case4_ursa_exact/binding-policy.yaml
+
+  echo "Waiting 230s (Ursa engine wait)..."
+  sleep 230
+
+  ./verify.sh case4_ursa_exact
+
+Run (closer to Ursa harness — delete BindingPolicy first, like soft_reset)
+-------------------------------------------------------------------------
+  cd manual_tests/secret_downsync_repro/dockerconfigjsonsecret
+
+  ./cleanup.sh
+  sleep 60
+
+  # Ursa soft_reset step: delete all BindingPolicies (can leave zombie Bindings)
+  kubectl --context wds1 delete bindingpolicy --all --ignore-not-found --wait=false
+
+  kubectl --context wds1 apply -f case4_ursa_exact/seed.yaml
+  kubectl --context wds1 apply -f case4_ursa_exact/binding-policy.yaml
+
+  sleep 230
+  ./verify.sh case4_ursa_exact
+
+If transport is wedged (Binding stuck Terminating)
+--------------------------------------------------
+  kubectl --context wds1 get bindings.control.kubestellar.io -o wide
+
+  for b in $(kubectl --context wds1 get bindings.control.kubestellar.io -o name); do
+    kubectl --context wds1 patch "$b" --type=merge -p '{"metadata":{"finalizers":null}}'
+  done
+  kubectl --context wds1 delete bindings.control.kubestellar.io --all --ignore-not-found
+
+  kubectl --context wds1 delete bindingpolicy --all --ignore-not-found
+  kubectl --context wds1 apply -f case4_ursa_exact/seed.yaml
+  kubectl --context wds1 apply -f case4_ursa_exact/binding-policy.yaml
+  sleep 230
+  ./verify.sh case4_ursa_exact
+
+Expected when failure reproduces
+--------------------------------
+  WDS:  namespace + secret present
+  WDS:  BindingPolicy + Binding (check Binding is NOT Terminating)
+  ITS:  only addon-addon-status-deploy-0 — no hash ManifestWorks for secret/namespace
+  edge: secret missing in ursa-namespace-template
+
+Compare with case1 (split policy, different name) to isolate policy shape vs transport wedge.

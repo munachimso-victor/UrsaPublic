@@ -1,0 +1,20 @@
+# Case 1: dockerconfigjson secret + namespace only (minimal isolated slice).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+    repro.kubestellar.io/case: dockerconfigjson-case1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-dockerconfigjsonsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+    repro.kubestellar.io/case: dockerconfigjson-case1
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: '{"auths":{"reg.example.com":{"auth":"YWRtaW46cGFzc3dvcmQ="}}}'

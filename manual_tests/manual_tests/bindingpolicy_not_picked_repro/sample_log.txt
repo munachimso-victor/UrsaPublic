@@ -1,0 +1,244 @@
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$ kubectl config get-contexts
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_name_length_repro$ cd ..
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests$ ls
+MANUAL_REPRO_PVC_NULL_STORAGECLASS.txt  passing_screts_policy.yaml                 pvc_null_storageclass_repro
+REPRO_PVC_NULL_STORAGECLASS.txt         passing_secrets.yaml                       pvc_standard.yaml
+bindingpolicy_name_length_repro         pvc_empty_string_storageclass.yaml         pvc_standard_policy.yaml
+bindingpolicy_not_picked_repro          pvc_empty_string_storageclass_policy.yaml  secret_downsync_repro
+failing_secrets.yaml                    pvc_null_storageclass.yaml                 serviceaccount_update_repro
+failing_secrets_policy.yaml             pvc_null_storageclass_policy.yaml
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests$ cd bindingpolicy_not_picked_repro/
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$  ./cleanup.sh
+  sleep 60
+
+  kubectl --context wds1 apply -f workload.yaml
+
+  kubectl --context wds1 get namespace ursa-namespace-bug-repro
+  kubectl --context wds1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+Deleting BindingPolicies from wds1...
+Clearing Bindings on wds1...
+Deleting workloads from wds1...
+Deleting workloads from edge-1...
+Deleting workloads from edge-2...
+Cleanup issued. Wait ~60s before re-running.
+namespace/ursa-namespace-bug-repro created
+configmap/ursa-configmap-bug-repro created
+NAME                       STATUS   AGE
+ursa-namespace-bug-repro   Active   0s
+NAME                       DATA   AGE
+ursa-configmap-bug-repro   1      0s
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$   POLICY_PASS="bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  echo "PASS policy name length: ${#POLICY_PASS}"
+
+  kubectl --context wds1 apply -f case_pass_63/binding-policy.yaml
+  sleep 90
+
+  echo "--- WDS: BindingPolicy ---"
+  kubectl --context wds1 get bindingpolicy "${POLICY_PASS}"
+
+  echo "--- WDS: Binding (transport companion) ---"
+  kubectl --context wds1 get bindings.control.kubestellar.io "${POLICY_PASS}"
+
+  echo "--- ITS: ManifestWorks for this policy (use transport label; MW names are UUIDs) ---"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_PASS}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_PASS}" -o yaml | \
+    grep -E 'kind: (ManifestWork|Namespace|ConfigMap)|name: (ursa-namespace-bug-repro|ursa-configmap-bug-repro)'
+
+  echo "--- Edge: object arrived ---"
+  kubectl --context edge-1 get namespace ursa-namespace-bug-repro
+  kubectl --context edge-1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+  kubectl --context edge-2 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+PASS policy name length: 63
+bindingpolicy.control.kubestellar.io/bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+--- WDS: BindingPolicy ---
+NAME                                                              SYNCED   READY   TYPE   AGE
+bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                           90s
+--- WDS: Binding (transport companion) ---
+NAME                                                              AGE
+bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa   88s
+--- ITS: ManifestWorks for this policy (use transport label; MW names are UUIDs) ---
+NAME                                                                             AGE
+f0825555-5657-4f9a-956d-e11c9a3a3071-wds1-fb6f4e9c-fc57-478c-a855-c1c4a1c881a5   89s
+f0825555-5657-4f9a-956d-e11c9a3a3071-wds1-7e0c7aef-e282-44df-a31e-661438ce8a11   89s
+  kind: ManifestWork
+        kind: Namespace
+            kubernetes.io/metadata.name: ursa-namespace-bug-repro
+          name: ursa-namespace-bug-repro
+          kind: Namespace
+          name: ursa-namespace-bug-repro
+  kind: ManifestWork
+        kind: ConfigMap
+          name: ursa-configmap-bug-repro
+          kind: ConfigMap
+          name: ursa-configmap-bug-repro
+--- Edge: object arrived ---
+NAME                       STATUS   AGE
+ursa-namespace-bug-repro   Active   89s
+NAME                       DATA   AGE
+ursa-configmap-bug-repro   1      90s
+NAME                       DATA   AGE
+ursa-configmap-bug-repro   1      90s
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$ POLICY_PASS="bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  kubectl --context wds1 delete bindingpolicy "${POLICY_PASS}" --ignore-not-found --wait=false
+  kubectl --context wds1 patch bindings.control.kubestellar.io/"${POLICY_PASS}" \
+    --type=merge -p '{"metadata":{"finalizers":null}}' --ignore-not-found 2>/dev/null || true
+  kubectl --context wds1 delete bindings.control.kubestellar.io "${POLICY_PASS}" --ignore-not-found --wait=false
+
+  kubectl --context edge-1 delete namespace ursa-namespace-bug-repro --ignore-not-found --wait=false
+  kubectl --context edge-2 delete namespace ursa-namespace-bug-repro --ignore-not-found --wait=false
+  sleep 30
+
+  kubectl --context wds1 apply -f workload.yaml
+bindingpolicy.control.kubestellar.io "bp-bug-repro-pass-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" deleted
+namespace "ursa-namespace-bug-repro" deleted
+namespace "ursa-namespace-bug-repro" deleted
+namespace/ursa-namespace-bug-repro unchanged
+configmap/ursa-configmap-bug-repro unchanged
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$ POLICY_FAIL="bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  echo "FAIL policy name length: ${#POLICY_FAIL}"
+
+  kubectl --context wds1 apply -f case_fail_64/binding-policy.yaml
+  sleep 90
+
+  echo "--- WDS: BindingPolicy (accepted — not an admission failure) ---"
+  kubectl --context wds1 get bindingpolicy "${POLICY_FAIL}" -o yaml
+
+  echo "--- WDS: Binding (still created) ---"
+  kubectl --context wds1 get bindings.control.kubestellar.io "${POLICY_FAIL}"
+
+  echo "--- ITS: no ManifestWorks for this policy ---"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_FAIL}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY_FAIL}" -o name || \
+    echo "(no ManifestWorks — bug signature)"
+
+  echo "--- Edge: objects missing ---"
+  kubectl --context edge-1 get namespace ursa-namespace-bug-repro
+  kubectl --context edge-1 get configmap -n ursa-namespace-bug-repro ursa-configmap-bug-repro
+FAIL policy name length: 64
+bindingpolicy.control.kubestellar.io/bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa created
+--- WDS: BindingPolicy (accepted — not an admission failure) ---
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"control.kubestellar.io/v1alpha1","kind":"BindingPolicy","metadata":{"annotations":{},"name":"bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"spec":{"clusterSelectors":[{"matchLabels":{"name":"edge-1"}},{"matchLabels":{"name":"edge-2"}}],"downsync":[{"objectNames":["ursa-configmap-bug-repro","ursa-namespace-bug-repro"]}]}}
+  creationTimestamp: "2026-07-03T03:32:17Z"
+  finalizers:
+  - bindingpolicy.kubestellar.io/kscontroller
+  generation: 1
+  name: bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  resourceVersion: "22972"
+  uid: 74a96bf6-1023-49ea-8878-7936a9623072
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-configmap-bug-repro
+    - ursa-namespace-bug-repro
+status:
+  conditions:
+  - lastTransitionTime: "2026-07-03T03:32:19Z"
+    message: All StatusCollector(s) are available
+    reason: ReconcileSuccess
+    status: "True"
+    type: StatusCollectorsAvailable
+  observedGeneration: 1
+--- WDS: Binding (still created) ---
+NAME                                                               AGE
+bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa   90s
+--- ITS: no ManifestWorks for this policy ---
+Error from server (BadRequest): Unable to find "work.open-cluster-management.io/v1, Resource=manifestworks" that match label selector "transport.kubestellar.io/originOwnerReferenceBindingKey=bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", field selector "": unable to parse requirement: values[0][transport.kubestellar.io/originOwnerReferenceBindingKey]: Invalid value: "bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": must be no more than 63 characters
+Error from server (BadRequest): Unable to find "work.open-cluster-management.io/v1, Resource=manifestworks" that match label selector "transport.kubestellar.io/originOwnerReferenceBindingKey=bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", field selector "": unable to parse requirement: values[0][transport.kubestellar.io/originOwnerReferenceBindingKey]: Invalid value: "bp-bug-repro-fail-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": must be no more than 63 characters
+(no ManifestWorks — bug signature)
+--- Edge: objects missing ---
+Error from server (NotFound): namespaces "ursa-namespace-bug-repro" not found
+Error from server (NotFound): namespaces "ursa-namespace-bug-repro" not found
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-07-03_00:24:43
+Checking script dependencies:
+✔ kubectl version v1.36.2 at /usr/local/bin/kubectl
+✔ helm version v3.21.2 at /usr/local/bin/helm
+✔ jq version jq-1.7 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.49.2 at /snap/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-V8Ac
+Using kubeconfig(s): /home/mvn27adm/.kube/kubeflex
+Validating contexts(s):
+✔ edge-1
+✔ edge-2
+✔ edge-3 *
+✔ its1
+✔ kind-kubeflex
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-kubeflex
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-kubeflex
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6f8fcc5699-rbb22, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-kubeflex, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-kubeflex, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5f8bf5476f-tt2fh namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-fb8f88f89-5sbdq namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-V8Ac/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-V8Ac
+(venv) mvn27adm@EN-CS-75JHF64-A:~/kubernetes/acto/acto/src/Ursa/manual_tests/bindingpolicy_not_picked_repro$

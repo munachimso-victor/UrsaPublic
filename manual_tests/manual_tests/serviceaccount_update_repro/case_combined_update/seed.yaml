@@ -1,0 +1,64 @@
+# Baseline: one secrets[] entry, one imagePullSecrets[] entry (no combined label).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-opaquesecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: Opaque
+stringData:
+  token: repro-placeholder
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-basicauthsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: password123
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-dockerconfigjsonsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: '{"auths":{"reg.example.com":{"auth":"YWRtaW46cGFzc3dvcmQ="}}}'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-dockercfgsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: kubernetes.io/dockercfg
+stringData:
+  .dockercfg: '{"reg.example.com":{"auth":"YWRtaW46cGFzc3dvcmQ=","email":"user@example.com"}}'
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ursa-serviceaccount-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+secrets:
+  - name: ursa-opaquesecret-template
+imagePullSecrets:
+  - name: ursa-dockerconfigjsonsecret-template

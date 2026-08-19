@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-length-probe
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ursa-configmap-length-probe
+  namespace: ursa-namespace-length-probe
+data:
+  probe: "bindingpolicy-name-length"

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-bug-repro
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ursa-configmap-bug-repro
+  namespace: ursa-namespace-bug-repro
+data:
+  repro: "bindingpolicy-label-limit-bug"

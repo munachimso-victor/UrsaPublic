@@ -1,0 +1,17 @@
+# Case 1: split downsync (matches Ursa pod-umbrella isolated slice that fails).
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: repro-dockerconfigjson-case1-namespace-only
+  labels:
+    repro.kubestellar.io/case: dockerconfigjson-case1
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-dockerconfigjsonsecret-template
+    - ursa-namespace-template

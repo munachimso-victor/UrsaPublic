@@ -1,0 +1,40 @@
+# Baseline: SA with secrets[] containing one entry. Both secrets are in the policy.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-opaquesecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: Opaque
+stringData:
+  token: repro-placeholder
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ursa-basicauthsecret-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: password123
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ursa-serviceaccount-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+secrets:
+  - name: ursa-opaquesecret-template

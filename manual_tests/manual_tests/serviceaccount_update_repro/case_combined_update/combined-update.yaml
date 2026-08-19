@@ -1,0 +1,15 @@
+# Single warm apply: metadata label + grow secrets[] + grow imagePullSecrets[].
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ursa-serviceaccount-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+    ursa.repro/phase: combined-update
+secrets:
+  - name: ursa-opaquesecret-template
+  - name: ursa-basicauthsecret-template
+imagePullSecrets:
+  - name: ursa-dockerconfigjsonsecret-template
+  - name: ursa-dockercfgsecret-template

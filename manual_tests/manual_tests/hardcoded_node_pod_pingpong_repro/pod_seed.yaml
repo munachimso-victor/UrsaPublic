@@ -1,0 +1,28 @@
+# Pod bound to a node name that does NOT exist on Kind edges.
+# Edge node lifecycle / orphan-pod cleanup deletes it; work-agent recreates it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardcoded-node-pod
+  namespace: default
+  labels:
+    app: manual-placement
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  nodeName: your-specific-node-name
+  containers:
+  - name: web-container
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+---
+# Sibling that should remain stable while the Pod flaps.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ursa-configmap-template
+  namespace: default
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+data:
+  custom_config: hardcoded-node-pod ping-pong sibling

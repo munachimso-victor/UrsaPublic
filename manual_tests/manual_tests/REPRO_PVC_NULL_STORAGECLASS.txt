@@ -1,0 +1,199 @@
+Manual repro: PVC storageClassName null → ManifestWork immutability failure
+================================================================================
+
+Reproduces Ursa testcase tc002 (null_ursa-storageclass-template):
+  - WDS PVC perturbed to storageClassName: null (via selective delete+apply)
+  - KubeStellar downsyncs desired PVC to edges via ManifestWork (ITS)
+  - Edge PVC already has storageClassName: standard (or ursa-storageclass-template)
+  - Klusterlet apply fails: spec immutable on bound PVC
+  - ManifestWork status shows: standard → null
+
+Environment: Ursa kubeflex (worker 0)
+  Contexts: wds1 (hub workloads), its1 (ManifestWork inventory), edge-1 / edge-2
+  Files:    manual_tests/pvc_standard.yaml
+            manual_tests/pvc_standard_policy.yaml
+            manual_tests/pvc_null_storageclass.yaml
+            fix-klusterlet-rbac.yaml (repo root)
+
+Prerequisites (once per cluster set)
+--------------------------------------
+  cd /path/to/Ursa
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # CSI hostpath + DRA drivers on edges
+  bash setup-drivers.sh edge-1 edge-2
+
+  # Klusterlet RBAC for cluster-scoped PV/SC (on EACH edge, not WDS)
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+
+
+Full clean slate (run if PVC is Lost / ClaimMisbound / stale state)
+--------------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Stop downsync
+  kubectl --context wds1 delete bindingpolicy ursa-ultimate-test-pod-policy-ursa-pvc-template --ignore-not-found
+
+  # Clean both edges
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete pv ursa-csipv-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete sc ursa-storageclass-template --ignore-not-found
+  done
+
+  # Clean WDS hub workloads (soft_reset does NOT delete these)
+  kubectl --context wds1 delete pvc ursa-pvc-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+  kubectl --context wds1 delete pv ursa-csipv-template --ignore-not-found
+  kubectl --context wds1 delete sc ursa-storageclass-template --ignore-not-found
+
+  # Wait for namespaces to finish terminating
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+  # Expect NotFound on all three
+
+  # Confirm no stray ursa PV/PVC
+  kubectl --context edge-1 get pv,pvc -A | grep ursa || true
+  kubectl --context edge-2 get pv,pvc -A | grep ursa || true
+
+
+Phase A — Baseline (tc001): bind PVC on edges
+---------------------------------------------
+  kubectl --context wds1 apply -f manual_tests/pvc_standard.yaml
+  kubectl --context wds1 apply -f manual_tests/pvc_standard_policy.yaml
+
+  sleep 120
+
+  # Wait 2-3 minutes, then verify (at least one edge must be Bound)
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template
+  kubectl --context edge-2 get pvc -n ursa-namespace-template ursa-pvc-template
+
+  kubectl --context edge-1 describe pvc -n ursa-namespace-template ursa-pvc-template
+  # Must NOT show: ClaimMisbound / Lost
+
+  # Sanity: WDS vs edge storage class
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='{.spec.storageClassName}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='{.spec.storageClassName}{"\n"}'
+
+  Success: STATUS=Bound on at least one edge (STORAGECLASS may be
+  ursa-storageclass-template or standard depending on cluster).
+
+
+Phase B — Perturbation (tc002): null storageClassName on WDS only
+-----------------------------------------------------------------
+  Mimics Ursa: patch fails → delete PVC on WDS only → re-apply null PVC.
+
+  # B1. Try full null manifest apply (expect immutable error on WDS)
+  kubectl --context wds1 apply -f manual_tests/pvc_null_storageclass.yaml
+
+  # B2. Selective delete+apply: PVC on WDS ONLY (do NOT delete on edges)
+  kubectl --context wds1 delete pvc ursa-pvc-template -n ursa-namespace-template
+
+  kubectl --context wds1 apply -f - <<'EOF'
+  apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: ursa-pvc-template
+    namespace: ursa-namespace-template
+    labels:
+      app.kubernetes.io/managed-by: ursa-testing
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    volumeName: ursa-csipv-template
+    storageClassName: null
+    resources:
+      requests:
+        storage: 1Mi
+  EOF
+
+  # B3. Confirm WDS has null in last-applied-configuration
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | \
+    grep -A2 last-applied-configuration
+
+  # B4. Re-apply binding policy if needed (usually still present)
+  kubectl --context wds1 apply -f manual_tests/pvc_standard_policy.yaml
+
+  # Wait 2-3 minutes for ManifestWork reconcile
+
+
+Phase C — Verify the bug
+------------------------
+  # Edge live object (still standard or ursa-storageclass-template, NOT null)
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | \
+    grep storageClassName
+
+  # ManifestWork on ITS (stored on hub, content from edge klusterlet apply attempt)
+  kubectl --context its1 -n edge-1 get manifestworks
+
+  # Pick the ManifestWork for ursa-pvc-template (PVC-only work), then:
+  kubectl --context its1 -n edge-1 get manifestwork <MW_NAME> -o json
+
+  Expect in status.resourceStatus.manifests[].conditions[].message:
+    AppliedManifestFailed
+    Forbidden: spec is immutable after creation ...
+    - "StorageClassName": "standard",
+    + "StorageClassName": null,
+
+  Note: spec.workload.manifests may OMIT storageClassName entirely (null
+  serialized as absent). The status diff is the authoritative proof of what
+  the edge agent tried to apply.
+
+  # Compare WDS vs edge
+  kubectl --context wds1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | grep storageClassName
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template -o yaml | grep storageClassName
+
+
+What NOT to do (common false paths)
+-----------------------------------
+  - Delete PVC on WDS before baseline is Bound on edge
+  - Delete full workload / namespace on WDS before perturbation (MW may omit
+    storageClassName and pass while WDS/edge still differ)
+  - Delete PVC on edges during perturbation (only delete on WDS for Ursa path)
+  - Skip setup-drivers.sh (PVC stays Pending/Lost)
+  - Apply klusterlet RBAC on WDS instead of edges
+
+
+Troubleshooting: PVC Lost / ClaimMisbound
+-----------------------------------------
+  Event: "Two claims are bound to the same volume, this one is bound incorrectly"
+
+  Cause: stale static PV/PVC binding (prior run left claimRef out of sync).
+  PV yaml uses pre-binding: claimRef on PV + volumeName on PVC.
+
+  Fix: run "Full clean slate" above, then Phase A again.
+
+  Static binding note: WDS and edge each have separate PV/PVC objects (different
+  UIDs). Hub binding does not permanently block edge binding, but re-creating
+  PVC without recreating PV on the same cluster causes Lost.
+
+
+KubeStellar demo env (cluster1 / cluster2) substitutions
+----------------------------------------------------------
+  export KUBECONFIG=~/.kube/config
+
+  kubectl --context its1 label managedcluster cluster1 name=edge-1 --overwrite
+  kubectl --context its1 label managedcluster cluster2 name=edge-2 --overwrite
+
+  bash setup-drivers.sh cluster1 cluster2
+  kubectl --context cluster1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context cluster2 apply -f fix-klusterlet-rbac.yaml
+
+  Then same flow: apply workloads + policy to wds1; check cluster1/cluster2
+  for edge PVC; ITS ManifestWorks in namespace edge-1 / edge-2 (if labeled).
+
+
+Ursa automated equivalent
+-------------------------
+  python3 engine.py --setup-only
+  python3 engine.py \
+    --run-suite test_2026-06-23_11-10-rerun-pvc/run_ursa-ultimate-test-pod-policy-ursa-pvc-template \
+    --skip-setup
+
+  See testcase_002_*_null_ursa-storageclass-template.txt for full artifacts.

@@ -1,0 +1,16 @@
+# Passing catalog-style name (60 chars) from tests/test_2026-06-25_00-27.
+# Apply workload.yaml on wds1 first, then this policy.
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-opaquesecret-template-policy-ursa-opaquesecret-template
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-configmap-length-probe
+    - ursa-namespace-length-probe

@@ -1,0 +1,316 @@
+Manual repro: long BindingPolicy names are not picked up by ITS (no ManifestWorks)
+==================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this
+folder:
+
+  manual_tests/bindingpolicy_name_length_repro/
+
+Goal
+----
+Reproduce KubeStellar transport failure when a BindingPolicy ``metadata.name``
+exceeds a length threshold:
+
+  1. Apply a simple workload (Namespace + ConfigMap) on WDS.
+  2. Apply a BindingPolicy with a **long** name that downsyncs that workload.
+  3. BindingPolicy **exists on WDS** (desired state is accepted).
+  4. ITS (**its1**) never creates ManifestWorks for the bound objects.
+  5. Edges never receive the ConfigMap / Namespace.
+
+Automated evidence: ``tests/test_2026-06-25_00-27`` — policies with catalog-style
+names longer than ~63 characters fail ManifestWork coverage while shorter names pass.
+
+Ursa already shortens generated policy names in ``testcase_builder.py``
+(``format_binding_policy_name()``) because long names "break KubeStellar transport
+labels".
+
+
+Files in this folder
+--------------------
+  REPRO.txt                          (this guide)
+  workload.yaml                      (Namespace + ConfigMap on WDS)
+  probe_length.sh                    (optional: sweep / binary-search name lengths)
+  cleanup.sh                         (remove policies, bindings, workloads)
+  setup_kubestellar.sh               (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+
+  case_catalog_long_name/
+    binding-policy-pass-60.yaml      (60-char catalog name — should sync)
+    binding-policy-fail-80.yaml        (80-char catalog name — should NOT sync)
+
+
+Known pass/fail from automated run (tests/test_2026-06-25_00-27)
+------------------------------------------------------------------
+  PASS (ManifestWorks created on ITS, objects on edges):
+    ursa-opaquesecret-template-policy-ursa-opaquesecret-template          (60)
+    ursa-sshauthsecret-template-policy-ursa-sshauthsecret-template        (60)
+    ursa-tlscertsecret-template-policy-ursa-tlscertsecret-template        (62)
+
+  FAIL (BindingPolicy on WDS; no workload ManifestWorks on ITS):
+    ursa-basicauthsecret-template-policy-ursa-basicauthsecret-template    (66)
+    ursa-dockercfgsecret-template-policy-ursa-dockercfgsecret-template    (66)
+    ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template (80)
+    ursa-serviceaccounttokensecret-template-policy-ursa-serviceaccounttokensecret-template (86)
+
+  Manual probe result (``probe_length.sh --binary 50 70``):
+    **63 characters PASS; 64 characters FAIL** (padded ``bp-len-probe-…`` names).
+    At length 64: BindingPolicy **and** Binding object exist on WDS, but ITS has
+    zero ManifestWorks (label ``transport.kubestellar.io/originOwnerReferenceBindingKey``
+    exceeds Kubernetes 63-character label-value limit).
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+
+bash <<'EOF'
+set -euo pipefail
+ARCH=amd64
+[ "$(uname -m)" = aarch64 ] && ARCH=arm64
+
+sudo apt-get update
+sudo apt-get install -y docker.io curl git python3
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER" || true
+if ! docker info >/dev/null 2>&1; then
+  sg docker -c "docker info"
+fi
+
+cd /tmp
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${ARCH}/kubectl"
+chmod +x kubectl && sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm -f kubectl
+
+curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+curl -Lo kind "https://kind.sigs.k8s.io/dl/latest/kind-linux-${ARCH}"
+chmod +x kind && sudo install -o root -g root -m 0755 kind /usr/local/bin/kind
+rm -f kind
+
+curl -s https://raw.githubusercontent.com/kubestellar/kubeflex/main/scripts/install-kubeflex.sh \
+  | sudo bash -s -- --ensure-folder /usr/local/bin --strip-bin
+
+bash <(curl -L https://raw.githubusercontent.com/open-cluster-management-io/clusteradm/main/install.sh) 0.10.1
+
+sudo sysctl -w fs.inotify.max_user_instances=8192
+sudo sysctl -w fs.inotify.max_user_watches=524288
+if docker info >/dev/null 2>&1; then
+  bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) \
+    kflex ocm helm kubectl docker kind
+else
+  sg docker -c "bash <(curl -fsSL https://raw.githubusercontent.com/kubestellar/kubestellar/v0.29.0/scripts/check_pre_req.sh) kflex ocm helm kubectl docker kind"
+fi
+
+docker info
+kubectl version --client
+helm version
+kind version
+kflex version
+clusteradm version
+EOF
+
+
+Step 2 — Cluster setup (copy/paste)
+-----------------------------------
+  cd manual_tests/bindingpolicy_name_length_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Baseline workload on WDS (copy/paste)
+----------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_name_length_repro
+
+  ./cleanup.sh
+  sleep 60
+
+  kubectl --context wds1 apply -f workload.yaml
+
+  kubectl --context wds1 get namespace ursa-namespace-length-probe
+  kubectl --context wds1 get configmap -n ursa-namespace-length-probe ursa-configmap-length-probe
+
+
+Step 4 — Control: short catalog name should sync (copy/paste)
+-------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_name_length_repro
+
+  POLICY="ursa-opaquesecret-template-policy-ursa-opaquesecret-template"
+  echo "policy name length: ${#POLICY}"
+
+  kubectl --context wds1 apply -f case_catalog_long_name/binding-policy-pass-60.yaml
+
+  sleep 90
+
+  # WDS: policy accepted
+  kubectl --context wds1 get bindingpolicy "${POLICY}" -o yaml
+
+  # WDS: transport binding object (name contains policy name)
+  kubectl --context wds1 get bindings.control.kubestellar.io -o wide
+
+  # ITS: ManifestWorks for this policy (MW .metadata.name is a UUID — use transport label)
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY}" -o wide
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY}" -o yaml | \
+    grep -E 'kind: (ManifestWork|Namespace|ConfigMap)|name: (ursa-namespace-length-probe|ursa-configmap-length-probe)'
+
+  # Edge: object arrived
+  kubectl --context edge-1 get namespace ursa-namespace-length-probe
+  kubectl --context edge-1 get configmap -n ursa-namespace-length-probe ursa-configmap-length-probe
+
+  # Expected: ManifestWorks on its1; ConfigMap on edge-1 and edge-2.
+  # (Do not paste "Expected:" lines into the shell — they are notes only.)
+
+  ./cleanup.sh
+  sleep 60
+  kubectl --context wds1 apply -f workload.yaml
+
+
+Step 5 — Find exact length boundary (copy/paste)
+------------------------------------------------
+  Use padded names ``bp-len-probe-`` + ``a`` characters to hit an exact length.
+  The helper script applies one policy at a time, waits, and checks sync.
+
+  Important:
+    - ``probe_length.sh`` resets edge namespaces between probes so stale ConfigMaps
+      do not look like a PASS.
+    - Binding cleanup uses **exact** policy names (shorter ``bp-len-probe-`` names
+      are prefixes of longer ones — never grep-substring bindings).
+    - ITS check uses ``-l transport.kubestellar.io/originOwnerReferenceBindingKey=<name>``
+      and counts rows with ``--no-headers`` (not ``grep '^kind: ManifestWork'``).
+
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_name_length_repro
+  chmod +x probe_length.sh cleanup.sh
+
+  ./cleanup.sh && sleep 60
+  kubectl --context wds1 apply -f workload.yaml
+
+  # Single probe (example: 63 characters)
+  ./probe_length.sh 63
+
+  # Linear sweep 58–70 (records last PASS and first FAIL)
+  ./probe_length.sh --sweep 58 70
+
+  # Binary search between known-good and known-bad range
+  ./probe_length.sh --binary 58 70
+
+  PASS criteria (transport reached ITS):
+    - ``wds Binding object: 1`` in probe output (``bindings.control.kubestellar.io``)
+    - ``its1 MW count (this policy): 2`` via label
+      ``transport.kubestellar.io/originOwnerReferenceBindingKey=<policy-name>``
+    - ConfigMap present on edge-1
+
+  FAIL / bug signature (length >= 64):
+    - ``wds BindingPolicy: 1`` and ``wds Binding object: 1`` (WDS accepts policy
+      and creates Binding — transport starts but does not reach ITS)
+    - ``its1 MW count (this policy): 0``
+    - ConfigMap / Namespace missing on edges (after edge reset between probes)
+
+  Record your boundary in sample.log.txt (see below).
+
+
+Manual probe for one length (without script)
+--------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  TARGET=63
+  PREFIX="bp-len-probe-"
+  PAD=$(( TARGET - ${#PREFIX} ))
+  NAME="${PREFIX}$(python3 -c "print('a'*${PAD})")"
+  echo "len=${#NAME} name=${NAME}"
+
+  kubectl --context wds1 apply -f - <<EOF
+  apiVersion: control.kubestellar.io/v1alpha1
+  kind: BindingPolicy
+  metadata:
+    name: ${NAME}
+  spec:
+    clusterSelectors:
+    - matchLabels:
+        name: edge-1
+    - matchLabels:
+        name: edge-2
+    downsync:
+    - objectNames:
+      - ursa-configmap-length-probe
+      - ursa-namespace-length-probe
+  EOF
+
+  sleep 90
+
+  kubectl --context wds1 get bindingpolicy "${NAME}"
+  kubectl --context wds1 get bindings.control.kubestellar.io
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${NAME}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${NAME}" -o yaml | \
+    grep -E 'kind: (Namespace|ConfigMap)|name: (ursa-namespace-length-probe|ursa-configmap-length-probe)'
+  kubectl --context edge-1 get configmap -n ursa-namespace-length-probe ursa-configmap-length-probe
+
+
+Step 6 — Bug: long catalog name should NOT sync (copy/paste)
+------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd manual_tests/bindingpolicy_name_length_repro
+
+  ./cleanup.sh
+  sleep 60
+  kubectl --context wds1 apply -f workload.yaml
+
+  POLICY="ursa-dockerconfigjsonsecret-template-policy-ursa-dockerconfigjsonsecret-template"
+  echo "policy name length: ${#POLICY}"
+
+  kubectl --context wds1 apply -f case_catalog_long_name/binding-policy-fail-80.yaml
+
+  sleep 90
+
+  # WDS: policy exists (bug is NOT admission rejection)
+  kubectl --context wds1 get bindingpolicy "${POLICY}" -o yaml
+
+  kubectl --context wds1 get bindings.control.kubestellar.io -o wide
+
+  # ITS: zero ManifestWorks for this policy (compare Step 4 label query)
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY}"
+  kubectl --context its1 get manifestworks -n edge-1 \
+    -l "transport.kubestellar.io/originOwnerReferenceBindingKey=${POLICY}" -o name || \
+    echo "no ITS ManifestWorks for this policy (expected bug signature)"
+
+  # Edges: objects missing
+  kubectl --context edge-1 get namespace ursa-namespace-length-probe
+  kubectl --context edge-1 get configmap -n ursa-namespace-length-probe ursa-configmap-length-probe
+
+  Expected bug: WDS has BindingPolicy; ITS has no ManifestWorks for the ConfigMap
+  or Namespace; edges have nothing. Same pattern as
+  tests/test_2026-06-25_00-27/run_ursa-dockerconfigjsonsecret-template-policy-*.
+
+
+Step 7 — Teardown (optional)
+----------------------------
+  cd manual_tests/bindingpolicy_name_length_repro
+  ./cleanup.sh
+
+
+Logging
+-------
+  Append command output to ``sample.log.txt`` in this folder. Include:
+    - Step 5 sweep/binary summary (last PASS length, first FAIL length)
+    - Step 4 vs Step 6 ManifestWork listings for contrast
+
+
+Related code
+------------
+  testcase_builder.py — ``format_binding_policy_name()`` shortens names to
+  ``ursa-bp-<stem>`` to avoid this transport-label issue during fuzzing.

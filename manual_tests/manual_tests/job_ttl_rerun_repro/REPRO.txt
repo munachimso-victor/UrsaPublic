@@ -1,0 +1,166 @@
+Manual repro: one-shot Job reruns after TTL cleanup
+===================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/job_ttl_rerun_repro/
+
+Goal
+----
+Reproduce the one-shot Job rerun where:
+
+  - WDS Job is downsynced with ttlSecondsAfterFinished: 60
+  - Edge Job completes successfully
+  - TTL controller removes the completed edge Job
+  - Hub/work-agent sees desired Job missing on the spoke and re-creates it
+  - The Job executes again, even though it is supposed to be a one-time run
+  - Edge Job age / pod names / controller-uid reset across polls
+
+Unlike the immutable-selector repro, this one does not require
+AppliedManifestWorkFailed as the primary symptom. The important proof is
+repeated execution of a one-shot Job after TTL delete.
+
+Ursa automated hit (same mechanism):
+  tests/2026-07-26_shard6/run_ursa-bp-job__pert__reset_always/ursa-job-template/
+    testcase_001_ursa-bp-job_original.txt
+    testcase_001_ursa-bp-job_original/manifestworks.yaml
+
+
+How this fails (step-by-step)
+-----------------------------
+  1. Desired state on WDS
+     Apply job_seed.yaml: Job has ttlSecondsAfterFinished: 60 and no manual
+     spec.selector. ConfigMap is a healthy sibling in the BindingPolicy.
+
+  2. BindingPolicy selects edge-1 / edge-2 and downsyncs
+     Namespace, ConfigMap, Job.
+
+  3. KubeStellar creates ManifestWorks on ITS (ns=edge-*).
+     Work agent on the spoke applies the wrapped manifests.
+
+  4. Spoke Job runs to completion (sleep 10 in busybox container).
+
+  5. After ~60s, the edge TTL controller deletes the completed Job.
+
+  6. Work agent / hub reconcile sees the desired Job still present on WDS
+     but missing on the spoke, so it re-applies and the Job runs again.
+
+  7. The cycle repeats: create → Running → Complete → TTL delete → recreate
+     → Running … Each recreate gets a new edge controller-uid. WDS Job
+     remains 0/1 for the whole window.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                              (this guide)
+  install_requirements.sh                (host prereqs: docker, kubectl, helm, …)
+  setup_kubestellar.sh                   (provision Kind + KubeStellar v0.29.0)
+  create-kind-cluster-with-SSL-passthrough.sh  (used by setup_kubestellar.sh)
+  fix-klusterlet-rbac.yaml               (extra edge RBAC; optional for this case)
+  job_seed.yaml                          (Namespace + ConfigMap + Job with TTL)
+  job_policy.yaml                        (BindingPolicy for edge-1 / edge-2)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/job_ttl_rerun_repro
+
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup (copy/paste)
+----------------------------------
+  cd /path/to/manual_tests/job_ttl_rerun_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar.sh
+
+  # Wait until complete (~15–30+ min). Expect contexts:
+  #   kind-kubeflex, its1, wds1, edge-1, edge-2, edge-3
+
+  kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  Teardown only (optional):
+    ./setup_kubestellar.sh --cleanup-only
+
+
+Step 3 — Reproduce
+------------------
+  cd /path/to/manual_tests/job_ttl_rerun_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 apply -f job_seed.yaml
+  kubectl --context wds1 apply -f job_policy.yaml
+
+
+Step 4 — Watch reruns across TTL cleanup
+----------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Poll — use sleep 70 to align with ttlSecondsAfterFinished: 60
+  for i in $(seq 1 12); do
+    echo "--- poll $i ---"
+    kubectl --context wds1 get job -n ursa-namespace-template ursa-job-template -o wide
+    kubectl --context edge-1 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-1: NotFound"
+    kubectl --context edge-2 get job -n ursa-namespace-template ursa-job-template \
+      -o wide 2>&1 || echo "edge-2: NotFound"
+    kubectl --context edge-1 get pods -n ursa-namespace-template \
+      -l job-name=ursa-job-template -o wide 2>&1 || true
+    sleep 70
+  done
+
+  SUCCESS CRITERIA:
+    WDS Job stays 0/1 for the whole poll window
+    Edge Jobs cycle Complete → NotFound → Running → Complete …
+    Edge Job age / pod names reset across polls (new run each recreate)
+    New edge controller-uid values appear on recreated Jobs
+
+
+
+Clean slate (re-run)
+--------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-job-ttl-rerun-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete job ursa-job-template -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete job ursa-job-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+
+
+What NOT to do
+--------------
+  - Run kubectl without KUBECONFIG=~/.kube/kubeflex
+  - Apply manifests from the Ursa repo root (use this folder)
+  - Poll with sleep shorter than ~70s (you will miss TTL delete + recreate)
+  - Remove ttlSecondsAfterFinished from the seed (that hides this bug path)
+
+
+Expected behaviour
+------------------
+  A one-shot Job should not be re-executed after TTL cleanup just because
+  the desired object still exists on the hub. Completed Job cleanup via
+  ttlSecondsAfterFinished should not imply "run this Job again" unless the
+  user explicitly asks for rerun semantics.

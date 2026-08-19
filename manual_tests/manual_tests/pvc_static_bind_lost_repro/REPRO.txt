@@ -1,0 +1,154 @@
+Manual repro: hub clears PV claimRef.uid (absent on WDS) → static PVC Lost
+==========================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/pvc_static_bind_lost_repro/
+
+NOT #3959 (volumeName null/empty fight). NOT #3855 (storageClassName null).
+Same pattern as fluxcd/flux2#2250.
+
+Repro uses the **same edge cluster twice** with the **same yaml**:
+  A) apply directly to edge-1  → bind succeeds, PV has claimRef.uid
+  B) clean up, apply via WDS   → bind fails, uid cleared, PVC Lost
+
+
+Goal
+----
+On one WEC (edge-1), show Kubernetes static bind works when yaml is applied
+locally, then show KubeStellar downsync breaks it on that same cluster:
+
+  Phase A — direct to edge-1 (control):
+    kubectl apply pvc_seed.yaml on edge-1
+    PV phase=Bound, PVC phase=Bound
+    PV spec.claimRef.uid set (matches PVC metadata.uid)
+
+  Phase B — same yaml via hub (bug):
+    delete Phase A objects from edge-1
+    kubectl apply pvc_seed.yaml + pvc_policy.yaml on wds1
+    edge-1 receives downsync
+    PV phase=Available, PVC phase=Lost
+    PV spec.claimRef.uid empty (hub clears after binder writes it)
+
+
+Ursa automated hits:
+  tests/all_baselines_10shards/shard4/run_baseline_reset_always/testcase_005_ursa-bp-csipv_original.txt
+  tests/all_baselines_10shards/shard4/run_baseline_reset_always/testcase_013_ursa-bp-pvc_original.txt
+
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  pvc_seed.yaml   (volumeName SET, claimRef name-only on PV)
+  pvc_policy.yaml (BindingPolicy → edge-1, edge-2)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/pvc_static_bind_lost_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  # Confirm wds1 is empty for this repro (no BindingPolicy / seed yet)
+  kubectl --context wds1 get bindingpolicy ursa-bp-pvc-static-bind-lost-repro 2>&1 || true
+
+
+Step 3 — Phase A: apply seed directly on edge-1 (control)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/pvc_static_bind_lost_repro
+
+  kubectl --context edge-1 apply -f pvc_seed.yaml
+  sleep 15
+
+  echo '=== Phase A: direct apply on edge-1 (should bind) ==='
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template -o wide
+  kubectl --context edge-1 get pv ursa-csipv-template -o wide
+  kubectl --context edge-1 get pv ursa-csipv-template \
+    -o jsonpath='PV phase={.status.phase} claimRef.uid={.spec.claimRef.uid}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='PVC phase={.status.phase} uid={.metadata.uid}{"\n"}'
+  kubectl --context edge-1 get pv ursa-csipv-template -o yaml | grep -A8 'claimRef:'
+
+  SUCCESS (Phase A):
+    PV phase=Bound
+    PVC phase=Bound
+    claimRef.uid matches PVC metadata.uid
+
+
+Step 4 — Clean up edge-1 before Phase B
+---------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 delete -f pvc_seed.yaml --ignore-not-found --wait=false
+  sleep 45
+
+  kubectl --context edge-1 get pv ursa-csipv-template 2>&1
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template 2>&1
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+
+  # All should be NotFound (or terminating gone) before hub push
+
+
+Step 5 — Phase B: same yaml via WDS + BindingPolicy (bug)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/pvc_static_bind_lost_repro
+
+  kubectl --context wds1 apply -f pvc_seed.yaml
+  kubectl --context wds1 apply -f pvc_policy.yaml
+  sleep 60
+
+
+Step 6 — Verify Phase B on the same edge-1
+------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  echo '=== WDS PV (no hub binder — uid never on hub) ==='
+  kubectl --context wds1 get pv ursa-csipv-template \
+    -o jsonpath='phase={.status.phase} claimRef.uid={.spec.claimRef.uid}{"\n"}'
+
+  echo '=== edge-1 after downsync (same cluster as Phase A — should NOT bind) ==='
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template -o wide
+  kubectl --context edge-1 get pv ursa-csipv-template -o wide
+  kubectl --context edge-1 get pv ursa-csipv-template \
+    -o jsonpath='PV phase={.status.phase} claimRef.uid={.spec.claimRef.uid}{"\n"}'
+  kubectl --context edge-1 get pvc -n ursa-namespace-template ursa-pvc-template \
+    -o jsonpath='PVC phase={.status.phase} uid={.metadata.uid}{"\n"}'
+
+  echo '=== ManifestWork wrap (claimRef name-only, no uid) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B2 -A10 'claimRef:'
+
+  SUCCESS (Phase B):
+    Edge PV phase=Available, claimRef.uid=<empty>
+    Edge PVC phase=Lost
+    Same yaml that was Bound in Phase A is broken after hub downsync
+
+  Optional — watch uid appear then clear (short window):
+    kubectl --context edge-1 get pv ursa-csipv-template -w \
+      -o jsonpath='{.status.phase} uid={.spec.claimRef.uid}{"\n"}'
+
+
+Snapshot after Step 6:
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  Downsync should not clear spec.claimRef.uid / resourceVersion that the
+  spoke PV binder wrote. Phase B on edge-1 should match Phase A: Bound/Bound.

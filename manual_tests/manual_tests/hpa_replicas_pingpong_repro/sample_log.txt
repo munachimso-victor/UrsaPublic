@@ -1,0 +1,1914 @@
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ chmod +x install_requirements.sh
+  ./install_requirements.sh
+==> Manual repro directory: /users/mvn27/Ursa/manual_tests/pvc_volumename_repro
+==> Detected platform: linux/amd64
+==> Installing apt packages (curl, docker.io)...
+==> Docker OK: 29.1.3
+==> kubectl already installed: Client Version: v1.36.3
+==> helm already installed: v3.21.3+g1ad6e68
+==> kind already installed: kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64
+==> kflex already installed: WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z
+Could not connect to a Kubernetes cluster: error building kubeconfig: stat /users/mvn27/.kube/config: no such file or directory
+==> clusteradm already installed: client                version :v0.10.1-0-g18a991c
+==> Raising inotify limits...
+==> Running KubeStellar v0.29.0 pre-req check...
+✔ KubeFlex (Kubeflex version: v0.9.3.518e21f 2026-01-13T05:03:25Z)
+✔ OCM CLI (:v0.10.1-0-g18a991c)
+✔ Helm (v3.21.3)
+✔ helm can fetch public charts
+✔ kubectl (v1.36.3)
+✔ Docker (Docker version 29.1.3, build 29.1.3-0ubuntu3~22.04.2)
+✔ Kind (kind v0.33.0-alpha+50a78d4ca5fae0 go1.26.3 linux/amd64)
+✔ fs.inotify.max_user_watches is 524288
+✔ fs.inotify.max_user_instances is 8192
+==> KubeStellar pre-req check passed.
+
+================================================================================
+Host prerequisites installed.
+================================================================================
+
+  If docker group was just added: newgrp docker  (or log out/in)
+
+  Verify:
+    docker info
+    kubectl version --client
+    helm version
+    kind version
+    kflex version
+    clusteradm version
+
+  Next:
+    export KUBECONFIG=~/.kube/kubeflex
+    ./setup_kubestellar.sh
+
+================================================================================
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ export KUBECONFIG=~/.kube/kubeflex
+(.venv) mvn27@node0:~/Ursa/manual_tests/pvc_volumename_repro$ ./setup_kubestellar.sh
+Using Workload Prefix: edge
+Using Host Cluster: kubeflex
+Using Host Port: 9443
+Using Kubeconfig Path: /users/mvn27/.kube/kubeflex
+==================================================
+CLEANUP INITIATED: Wiping clusters and contexts...
+Target Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Deleting Host Cluster: kubeflex...
+Deleting cluster "kubeflex" ...
+Deleted nodes: ["kubeflex-control-plane"]
+Deleting Workload Cluster: edge-1...
+Deleting cluster "edge-1" ...
+Deleted nodes: ["edge-1-control-plane"]
+Deleting Workload Cluster: edge-2...
+Deleting cluster "edge-2" ...
+Deleted nodes: ["edge-2-control-plane"]
+Deleting Workload Cluster: edge-3...
+Deleting cluster "edge-3" ...
+Deleted nodes: ["edge-3-control-plane"]
+Cleaning up KubeStellar contexts...
+Cleanup complete.
+--------------------------------------------------
+==================================================
+Starting KubeStellar Setup Scenario
+Host Cluster: kubeflex
+Member Clusters: edge-1 edge-2 edge-3
+Using Kubeconfig: /users/mvn27/.kube/kubeflex
+==================================================
+Creating Kind cluster kubeflex with SSL passthrough...
+Creating "kubeflex" kind cluster with SSL passthrougn and 9443 port mapping...
+No kind clusters found.
+Creating cluster "kubeflex" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-kubeflex"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-kubeflex
+
+Have a question, bug, or feature request? Let us know! https://kind.sigs.k8s.io/#community 🙂
+Installing an nginx ingress...
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+serviceaccount/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+configmap/ingress-nginx-controller created
+service/ingress-nginx-controller created
+service/ingress-nginx-controller-admission created
+deployment.apps/ingress-nginx-controller created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+ingressclass.networking.k8s.io/nginx created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+Patching nginx ingress to enable SSL passthrough...
+deployment.apps/ingress-nginx-controller patched
+Waiting for nginx ingress with SSL passthrough to be ready...
+Waiting for nginx ingress controller deployment to be rolled out...
+Waiting for deployment spec update to be observed...
+Waiting for deployment spec update to be observed...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 out of 1 new replicas have been updated...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "ingress-nginx-controller" rollout to finish: 0 of 1 updated replicas are available...
+deployment "ingress-nginx-controller" successfully rolled out
+Waiting for nginx ingress controller pod to be ready...
+pod/ingress-nginx-controller-6856c8b665-qcj6l condition met
+Setting context to "kind-kubeflex"...
+Switched to context "kind-kubeflex".
+--------------------------------------------------
+Installing KubeStellar Core Helm Chart (v0.29.0)...
+Release "ks-core" does not exist. Installing it now.
+Pulled: ghcr.io/kubestellar/kubestellar/core-chart:0.29.0
+Digest: sha256:3b9550f95e99a4ed2361c53b045f7198d12c4035ec58bf7d5c83c74f7d7e3c10
+NAME: ks-core
+LAST DEPLOYED: Tue Jul 28 00:30:20 2026
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+For your convenience you will probably want to add contexts to your
+kubeconfig named after the non-host-type control planes (WDSes and
+ITSes) that you just created (a host-type control plane is just an
+alias for the KubeFlex hosting cluster). You can do that with the
+following `kflex` commands; each creates a context and makes it the
+current one. See
+https://github.com/kubestellar/kubestellar/blob/0.29.0/docs/content/direct/core-chart.md#kubeconfig-files-and-contexts-for-control-planes
+for a way to do this without using `kflex`.
+Start by setting your current kubeconfig context to the one you used
+when installing this chart.
+
+kubectl config use-context $the_one_where_you_installed_this_chart
+kflex ctx --set-current-for-hosting # make sure the KubeFlex CLI's hidden state is right for what the Helm chart just did
+
+kflex ctx --overwrite-existing-context its1
+kflex ctx --overwrite-existing-context wds1
+
+Finally, you can use `kflex ctx` to switch back to the kubeconfig
+context for your KubeFlex hosting cluster.
+--------------------------------------------------
+Configuring KubeFlex contexts...
+Switched to context "kind-kubeflex".
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Checking for saved hosting cluster context...
+✔ Switching to hosting cluster context...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context its1 not found (context its1 not found), trying to load from server...
+✔ Switching to context its1...
+WARNING: current kflex version introduces BREAKING CHANGES related to kflex and your kubeconfig file which may interrupt kflex to function properly.
+See https://github.com/kubestellar/kubeflex/blob/main/docs/users.md
+✔ Overwriting existing context for control plane
+kubeconfig context wds1 not found (context wds1 not found), trying to load from server...
+✔ Switching to context wds1...
+--------------------------------------------------
+Waiting for ITS (its1) to be fully initialized...
+Waiting for its-hub-init hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for its-hub-init job completion...
+job.batch/its-hub-init condition met
+Waiting for install-status-addon hook...
+controlplane.tenancy.kflex.kubestellar.org/its1 condition met
+Waiting for install-status-addon job completion...
+job.batch/install-status-addon condition met
+ITS initialization complete.
+--------------------------------------------------
+Creating and Registering Workload Clusters...
+Processing edge-1...
+Creating cluster "edge-1" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-1"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-1 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-1" renamed to "edge-1".
+Registering edge-1 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTAwLCJpYXQiOjE3ODUyMjA1MDAsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTAwLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.O-5C13nz5ADv5WCjekeLIs0BUbpHNCjx2iCX1pl9Z-rxV3_IQwXGr-mFadFp_91zS5rWmdKbpYIRJqUhp5KAdc1Lo5DV-pS5UozHS3ElBgNGVL891CZR6f8T34J6uQILbFPpWfXfnWzr28wRzgKB9KD81jmIHqyjZ_wd6O_z02ElOe0zNC2wbFYSC8gqkb-zJTbsiOeUjL0Z0yV5q0Dj6iG46SRpXONsCBD2D0kj6zqmtD5vo4hxgJv3hFn_3crTY0GwRuA_9_-JMYlCywKzgSTsxL20l_pjugG4hTN6FeHpM2gGdlpjxYPCCmiw2GzeCRsRWR2hsTQjgT0IqzrI5g --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-1 --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-1
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-2...
+Creating cluster "edge-2" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-2"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-2 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Thanks for using kind! 😊
+Context "kind-edge-2" renamed to "edge-2".
+Registering edge-2 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MTc0LCJpYXQiOjE3ODUyMjA1NzQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNTc0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.D1czrD5-KDhb-AJZ8CYn-oY-Kw5EeNZQJdpifKORC0cXZ1cO8xJR1H_nwYX6ppzNYmGStapahx3Rf6KPyNKd56c9NyeNudSVmFF6Cjns6ECMqC8FmmigiY1ScVr8n3w7-4AcrGMuVZtIj6YpGf9vVMv7LUL1J-7547WXdFtM_aum5O7y65vb6NnXlWGWltCG714K4uJV_Md1ugRTLp8oWum_xXvONdZZhfzyTFD-nDMLET3VpyykBDyGg0kSu-w4ceJ7uKO6EK91LnxE_pyNQ0wje8TP4RGQfUctCjCsH_P5MVO_Z6rm3p-xGVz1B2P1pEugAv_grKBnP72e2u4KqA --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-2 --context edge-2 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-2
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+Processing edge-3...
+Creating cluster "edge-3" ...
+ ✓ Ensuring node image (kindest/node:v1.36.1) 🖼
+ ✓ Preparing nodes 📦
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
+Set kubectl context to "kind-edge-3"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-edge-3 --kubeconfig /users/mvn27/.kube/kubeflex
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Context "kind-edge-3" renamed to "edge-3".
+Registering edge-3 with ITS1...
+Executing command: clusteradm join --hub-token eyJhbGciOiJSUzI1NiIsImtpZCI6InVzZndpMjhNSElGQ0s5YUJsZG9BUV9EREd5WmNKMFJFTHAtWENneVF1b0kifQ.eyJhdWQiOlsiaHR0cHM6Ly9rdWJlcm5ldGVzLmRlZmF1bHQuc3ZjLmNsdXN0ZXIubG9jYWwiLCJrM3MiXSwiZXhwIjoxNzg1MjI0MjU0LCJpYXQiOjE3ODUyMjA2NTQsImlzcyI6Imh0dHBzOi8va3ViZXJuZXRlcy5kZWZhdWx0LnN2Yy5jbHVzdGVyLmxvY2FsIiwia3ViZXJuZXRlcy5pbyI6eyJuYW1lc3BhY2UiOiJvcGVuLWNsdXN0ZXItbWFuYWdlbWVudCIsInNlcnZpY2VhY2NvdW50Ijp7Im5hbWUiOiJjbHVzdGVyLWJvb3RzdHJhcCIsInVpZCI6IjgwZDEwZWNjLWY2NDYtNDIzNS05NmNkLTg0YTg5MDM4M2EzNCJ9fSwibmJmIjoxNzg1MjIwNjU0LCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6b3Blbi1jbHVzdGVyLW1hbmFnZW1lbnQ6Y2x1c3Rlci1ib290c3RyYXAifQ.XZPz64enTWw-CmcqWHr3cmLbyVGdP0k1_EVobV65Qi7JFlTREehOSkQ1RCRWx8LyygyD9OYiZtPeoTVKtZN49gi3naODjiEtOqb0DPVqcVpPb3tIHXtl2OXHfdiJ_rFgNlvDNAu7w6884m9s5KpWd-nAgJGABwXfhnW8VCU-3XpExHrCGmgMLFmqzKDIcKx49tAoVfJCfIDpkRA8ouawQ2ehB2ECO7MQsgzAG1TxsJ4rKqXYL6jHWDl8drioBQA7JMEh_M45BVUqCElSfsyaysqpmt3T-INKx7mKgp22NwairL3GP125ayCH3j7kaRwCe7x86cY64khvBezojWprgg --hub-apiserver https://its1.localtest.me:9443 --cluster-name edge-3 --context edge-3 --singleton --force-internal-endpoint-lookup --kubeconfig /users/mvn27/.kube/kubeflex
+Preflight check: HubKubeconfig check Passed with 0 warnings and 0 errors
+Preflight check: DeployMode Check Passed with 0 warnings and 0 errors
+Preflight check: ClusterName Check Passed with 0 warnings and 0 errors
+Please log onto the hub cluster and run the following command:
+
+    clusteradm accept --clusters edge-3
+
+This is not needed when the ManagedClusterAutoApproval feature is enabled
+--------------------------------------------------
+Waiting for CSRs to appear in ITS1...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 2 pending CSRs (Need 3)...
+Waiting 5 seconds...
+Found 3 pending CSRs (Need 3)...
+All required CSRs found.
+--------------------------------------------------
+Approving CSRs...
+Starting approve csrs for the cluster edge-1
+CSR edge-1-pxk7s approved
+set hubAcceptsClient to true for managed cluster edge-1
+
+ Your managed cluster edge-1 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-2
+CSR edge-2-rtt9j approved
+set hubAcceptsClient to true for managed cluster edge-2
+
+ Your managed cluster edge-2 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+Starting approve csrs for the cluster edge-3
+CSR edge-3-n5jcn approved
+set hubAcceptsClient to true for managed cluster edge-3
+
+ Your managed cluster edge-3 has joined the Hub successfully. Visit https://open-cluster-management.io/scenarios or https://github.com/open-cluster-management-io/OCM/tree/main/solutions for next steps.
+--------------------------------------------------
+Verifying and Labeling Clusters...
+NAME     HUB ACCEPTED   MANAGED CLUSTER URLS                JOINED   AVAILABLE   AGE
+edge-1   true           https://edge-1-control-plane:6443                        2m23s
+edge-2   true           https://edge-2-control-plane:6443                        65s
+edge-3   true           https://edge-3-control-plane:6443                        4s
+Labeling edge-1...
+managedcluster.cluster.open-cluster-management.io/edge-1 labeled
+Labeling edge-2...
+managedcluster.cluster.open-cluster-management.io/edge-2 labeled
+Labeling edge-3...
+managedcluster.cluster.open-cluster-management.io/edge-3 labeled
+==================================================
+Setup Complete!
+Configuration saved to: /users/mvn27/.kube/kubeflex
+Contexts available: kind-kubeflex, its1, wds1, wds2, edge-1 edge-2 edge-3
+==================================================
+...
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-hpa-replicas-pingpong-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+    kubectl --context $ctx delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+bindingpolicy.control.kubestellar.io "ursa-bp-hpa-replicas-pingpong-repro" deleted
+horizontalpodautoscaler.autoscaling "ursa-hpa-high" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+namespace "ursa-namespace-template" deleted
+horizontalpodautoscaler.autoscaling "ursa-hpa-high" deleted from ursa-namespace-template namespace
+deployment.apps "ursa-deploy-high" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl config get-contexts
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+CURRENT   NAME            CLUSTER         AUTHINFO        NAMESPACE
+          edge-1          kind-edge-1     kind-edge-1
+          edge-2          kind-edge-2     kind-edge-2
+*         edge-3          kind-edge-3     kind-edge-3
+          its1            its1-cluster    its1-admin
+          kind-kubeflex   kind-kubeflex   kind-kubeflex
+          wds1            wds1-cluster    wds1-admin      default
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 apply -f hpa_deploy_high.yaml
+  kubectl --context wds1 apply -f hpa_policy.yaml
+namespace/ursa-namespace-template created
+deployment.apps/ursa-deploy-high created
+horizontalpodautoscaler.autoscaling/ursa-hpa-high created
+bindingpolicy.control.kubestellar.io/ursa-bp-hpa-replicas-pingpong-repro created
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='wds replicas={.spec.replicas}{"\n"}'
+  kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='edge replicas={.spec.replicas}{"\n"}'
+wds replicas=10
+edge replicas=5
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ for i in $(seq 1 240); do
+    echo "--- poll $i $(date -Is) ---"
+    kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-high \
+      -o jsonpath='deploy replicas={.spec.replicas} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context edge-1 -n ursa-namespace-template get hpa ursa-hpa-high \
+      -o jsonpath='hpa current={.status.currentReplicas} desired={.status.desiredReplicas} lastScale={.status.lastScaleTime} able={.status.conditions[?(@.type=="AbleToScale")].reason}{"\n"}'
+    sleep 5
+  done
+--- poll 1 2026-07-28T13:29:16-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 2 2026-07-28T13:29:21-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 3 2026-07-28T13:29:27-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 4 2026-07-28T13:29:32-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 5 2026-07-28T13:29:37-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 6 2026-07-28T13:29:42-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 7 2026-07-28T13:29:47-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 8 2026-07-28T13:29:52-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 9 2026-07-28T13:29:58-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 10 2026-07-28T13:30:03-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 11 2026-07-28T13:30:08-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 12 2026-07-28T13:30:13-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 13 2026-07-28T13:30:18-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 14 2026-07-28T13:30:23-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 15 2026-07-28T13:30:29-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 16 2026-07-28T13:30:34-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 17 2026-07-28T13:30:39-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 18 2026-07-28T13:30:44-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 19 2026-07-28T13:30:49-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 20 2026-07-28T13:30:55-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 21 2026-07-28T13:31:00-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 22 2026-07-28T13:31:05-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 23 2026-07-28T13:31:10-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 24 2026-07-28T13:31:15-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 25 2026-07-28T13:31:20-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 26 2026-07-28T13:31:26-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 27 2026-07-28T13:31:31-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 28 2026-07-28T13:31:36-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 29 2026-07-28T13:31:41-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 30 2026-07-28T13:31:46-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 31 2026-07-28T13:31:51-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 32 2026-07-28T13:31:57-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 33 2026-07-28T13:32:02-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 34 2026-07-28T13:32:07-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 35 2026-07-28T13:32:12-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 36 2026-07-28T13:32:17-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 37 2026-07-28T13:32:23-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 38 2026-07-28T13:32:28-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 39 2026-07-28T13:32:33-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 40 2026-07-28T13:32:38-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 41 2026-07-28T13:32:43-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 42 2026-07-28T13:32:49-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 43 2026-07-28T13:32:54-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 44 2026-07-28T13:32:59-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 45 2026-07-28T13:33:04-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 46 2026-07-28T13:33:09-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 47 2026-07-28T13:33:14-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 48 2026-07-28T13:33:20-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 49 2026-07-28T13:33:25-06:00 ---
+deploy replicas=5 rv=80203
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+************************************************************************************************
+--- poll 50 2026-07-28T13:33:30-06:00 ---
+deploy replicas=10 rv=80651
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 51 2026-07-28T13:33:36-06:00 ---
+deploy replicas=10 rv=80674
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 52 2026-07-28T13:33:41-06:00 ---
+deploy replicas=10 rv=80702
+hpa current=5 desired=5 lastScale=2026-07-28T19:28:43Z able=SucceededGetScale
+--- poll 53 2026-07-28T13:33:46-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=10 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededRescale
+--- poll 54 2026-07-28T13:33:51-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=10 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededRescale
+--- poll 55 2026-07-28T13:33:57-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=10 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededRescale
+************************************************************************************************
+--- poll 56 2026-07-28T13:34:02-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 57 2026-07-28T13:34:07-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 58 2026-07-28T13:34:12-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 59 2026-07-28T13:34:17-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 60 2026-07-28T13:34:23-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 61 2026-07-28T13:34:28-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 62 2026-07-28T13:34:33-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 63 2026-07-28T13:34:38-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 64 2026-07-28T13:34:43-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 65 2026-07-28T13:34:49-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 66 2026-07-28T13:34:54-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 67 2026-07-28T13:34:59-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 68 2026-07-28T13:35:04-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 69 2026-07-28T13:35:09-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 70 2026-07-28T13:35:15-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 71 2026-07-28T13:35:20-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 72 2026-07-28T13:35:25-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 73 2026-07-28T13:35:30-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 74 2026-07-28T13:35:35-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 75 2026-07-28T13:35:40-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 76 2026-07-28T13:35:46-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 77 2026-07-28T13:35:51-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 78 2026-07-28T13:35:56-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 79 2026-07-28T13:36:01-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 80 2026-07-28T13:36:06-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 81 2026-07-28T13:36:12-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 82 2026-07-28T13:36:17-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 83 2026-07-28T13:36:22-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 84 2026-07-28T13:36:27-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 85 2026-07-28T13:36:32-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 86 2026-07-28T13:36:37-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 87 2026-07-28T13:36:43-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 88 2026-07-28T13:36:48-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 89 2026-07-28T13:36:53-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 90 2026-07-28T13:36:58-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 91 2026-07-28T13:37:03-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 92 2026-07-28T13:37:09-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 93 2026-07-28T13:37:14-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 94 2026-07-28T13:37:19-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 95 2026-07-28T13:37:24-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 96 2026-07-28T13:37:29-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 97 2026-07-28T13:37:35-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 98 2026-07-28T13:37:40-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 99 2026-07-28T13:37:45-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 100 2026-07-28T13:37:50-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 101 2026-07-28T13:37:55-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 102 2026-07-28T13:38:00-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 103 2026-07-28T13:38:06-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 104 2026-07-28T13:38:11-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 105 2026-07-28T13:38:16-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 106 2026-07-28T13:38:21-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+--- poll 107 2026-07-28T13:38:26-06:00 ---
+deploy replicas=5 rv=80749
+hpa current=5 desired=5 lastScale=2026-07-28T19:33:43Z able=SucceededGetScale
+************************************************************************************************
+--- poll 108 2026-07-28T13:38:31-06:00 ---
+deploy replicas=5 rv=81211
+hpa current=10 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededRescale
+--- poll 109 2026-07-28T13:38:37-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=10 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededRescale
+--- poll 110 2026-07-28T13:38:42-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=10 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededRescale
+************************************************************************************************
+--- poll 111 2026-07-28T13:38:47-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 112 2026-07-28T13:38:52-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 113 2026-07-28T13:38:58-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 114 2026-07-28T13:39:03-06:00 ---
+deploy replicas=5 rv=81223
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 115 2026-07-28T13:39:08-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 116 2026-07-28T13:39:13-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 117 2026-07-28T13:39:19-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 118 2026-07-28T13:39:24-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 119 2026-07-28T13:39:29-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 120 2026-07-28T13:39:34-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 121 2026-07-28T13:39:39-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 122 2026-07-28T13:39:44-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 123 2026-07-28T13:39:50-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 124 2026-07-28T13:39:55-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 125 2026-07-28T13:40:00-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 126 2026-07-28T13:40:05-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 127 2026-07-28T13:40:10-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 128 2026-07-28T13:40:15-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 129 2026-07-28T13:40:21-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 130 2026-07-28T13:40:26-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 131 2026-07-28T13:40:31-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 132 2026-07-28T13:40:36-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 133 2026-07-28T13:40:41-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 134 2026-07-28T13:40:46-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 135 2026-07-28T13:40:52-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 136 2026-07-28T13:40:57-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 137 2026-07-28T13:41:02-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 138 2026-07-28T13:41:07-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 139 2026-07-28T13:41:12-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 140 2026-07-28T13:41:18-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 141 2026-07-28T13:41:23-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 142 2026-07-28T13:41:28-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 143 2026-07-28T13:41:33-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 144 2026-07-28T13:41:38-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 145 2026-07-28T13:41:43-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 146 2026-07-28T13:41:49-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 147 2026-07-28T13:41:54-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 148 2026-07-28T13:41:59-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 149 2026-07-28T13:42:04-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 150 2026-07-28T13:42:09-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 151 2026-07-28T13:42:15-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 152 2026-07-28T13:42:20-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 153 2026-07-28T13:42:25-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 154 2026-07-28T13:42:30-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 155 2026-07-28T13:42:35-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 156 2026-07-28T13:42:40-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 157 2026-07-28T13:42:46-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 158 2026-07-28T13:42:51-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 159 2026-07-28T13:42:56-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 160 2026-07-28T13:43:01-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 161 2026-07-28T13:43:06-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 162 2026-07-28T13:43:12-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 163 2026-07-28T13:43:17-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 164 2026-07-28T13:43:22-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+--- poll 165 2026-07-28T13:43:27-06:00 ---
+deploy replicas=5 rv=81302
+hpa current=5 desired=5 lastScale=2026-07-28T19:38:29Z able=SucceededGetScale
+************************************************************************************************
+--- poll 166 2026-07-28T13:43:32-06:00 ---
+deploy replicas=5 rv=81733
+hpa current=10 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededRescale
+--- poll 167 2026-07-28T13:43:38-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=10 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededRescale
+--- poll 168 2026-07-28T13:43:43-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=10 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededRescale
+************************************************************************************************
+--- poll 169 2026-07-28T13:43:48-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 170 2026-07-28T13:43:54-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 171 2026-07-28T13:43:59-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 172 2026-07-28T13:44:04-06:00 ---
+deploy replicas=5 rv=81740
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 173 2026-07-28T13:44:09-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 174 2026-07-28T13:44:15-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 175 2026-07-28T13:44:20-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 176 2026-07-28T13:44:25-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 177 2026-07-28T13:44:30-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 178 2026-07-28T13:44:35-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 179 2026-07-28T13:44:41-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 180 2026-07-28T13:44:46-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 181 2026-07-28T13:44:51-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 182 2026-07-28T13:44:56-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 183 2026-07-28T13:45:01-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 184 2026-07-28T13:45:07-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 185 2026-07-28T13:45:12-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 186 2026-07-28T13:45:17-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 187 2026-07-28T13:45:22-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 188 2026-07-28T13:45:27-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 189 2026-07-28T13:45:33-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 190 2026-07-28T13:45:38-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 191 2026-07-28T13:45:43-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 192 2026-07-28T13:45:48-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 193 2026-07-28T13:45:53-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 194 2026-07-28T13:45:59-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 195 2026-07-28T13:46:04-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 196 2026-07-28T13:46:09-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 197 2026-07-28T13:46:14-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 198 2026-07-28T13:46:19-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 199 2026-07-28T13:46:25-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 200 2026-07-28T13:46:30-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 201 2026-07-28T13:46:35-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 202 2026-07-28T13:46:40-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 203 2026-07-28T13:46:45-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 204 2026-07-28T13:46:51-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 205 2026-07-28T13:46:56-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 206 2026-07-28T13:47:01-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 207 2026-07-28T13:47:06-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 208 2026-07-28T13:47:11-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 209 2026-07-28T13:47:16-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 210 2026-07-28T13:47:22-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 211 2026-07-28T13:47:27-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 212 2026-07-28T13:47:32-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 213 2026-07-28T13:47:37-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 214 2026-07-28T13:47:42-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 215 2026-07-28T13:47:48-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 216 2026-07-28T13:47:53-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 217 2026-07-28T13:47:58-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 218 2026-07-28T13:48:03-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 219 2026-07-28T13:48:08-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 220 2026-07-28T13:48:14-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 221 2026-07-28T13:48:19-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 222 2026-07-28T13:48:24-06:00 ---
+deploy replicas=5 rv=81829
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+************************************************************************************************
+--- poll 223 2026-07-28T13:48:29-06:00 ---
+deploy replicas=10 rv=82223
+hpa current=5 desired=5 lastScale=2026-07-28T19:43:30Z able=SucceededGetScale
+--- poll 224 2026-07-28T13:48:34-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=10 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededRescale
+--- poll 225 2026-07-28T13:48:40-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=10 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededRescale
+--- poll 226 2026-07-28T13:48:45-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=10 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededRescale
+************************************************************************************************
+--- poll 227 2026-07-28T13:48:50-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 228 2026-07-28T13:48:55-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 229 2026-07-28T13:49:01-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 230 2026-07-28T13:49:06-06:00 ---
+deploy replicas=5 rv=82260
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 231 2026-07-28T13:49:11-06:00 ---
+deploy replicas=5 rv=82363
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 232 2026-07-28T13:49:16-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 233 2026-07-28T13:49:21-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 234 2026-07-28T13:49:27-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 235 2026-07-28T13:49:32-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 236 2026-07-28T13:49:37-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 237 2026-07-28T13:49:42-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 238 2026-07-28T13:49:47-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 239 2026-07-28T13:49:53-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+--- poll 240 2026-07-28T13:49:58-06:00 ---
+deploy replicas=5 rv=82375
+hpa current=5 desired=5 lastScale=2026-07-28T19:48:30Z able=SucceededGetScale
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 delete bindingpolicy ursa-bp-hpa-replicas-pingpong-repro --ignore-not-found
+
+  for ctx in edge-1 edge-2; do
+    kubectl --context $ctx delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+    kubectl --context $ctx delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found --wait=false
+    kubectl --context $ctx delete ns ursa-namespace-template --ignore-not-found --wait=false
+  done
+
+  kubectl --context wds1 delete hpa ursa-hpa-high ursa-hpa-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete deploy ursa-deploy-high ursa-deploy-low -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 60
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+  kubectl --context edge-2 get ns ursa-namespace-template 2>&1
+  kubectl --context wds1 get ns ursa-namespace-template 2>&1
+bindingpolicy.control.kubestellar.io "ursa-bp-hpa-replicas-pingpong-repro" deleted
+horizontalpodautoscaler.autoscaling "ursa-hpa-high" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+namespace "ursa-namespace-template" deleted
+horizontalpodautoscaler.autoscaling "ursa-hpa-high" deleted from ursa-namespace-template namespace
+deployment.apps "ursa-deploy-high" deleted from ursa-namespace-template namespace
+namespace "ursa-namespace-template" deleted
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$  kubectl --context wds1 apply -f hpa_deploy_low.yaml
+namespace/ursa-namespace-template created
+deployment.apps/ursa-deploy-low created
+horizontalpodautoscaler.autoscaling/ursa-hpa-low created
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 apply -f hpa_policy.yaml
+bindingpolicy.control.kubestellar.io/ursa-bp-hpa-replicas-pingpong-repro created
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='wds replicas={.spec.replicas}{"\n"}'
+  kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-high \
+    -o jsonpath='edge replicas={.spec.replicas}{"\n"}'
+Error from server (NotFound): deployments.apps "ursa-deploy-high" not found
+Error from server (NotFound): deployments.apps "ursa-deploy-high" not found
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ kubectl --context wds1 -n ursa-namespace-template get deploy ursa-deploy-low \
+    -o jsonpath='wds replicas={.spec.replicas}{"\n"}'
+  kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-low \
+    -o jsonpath='edge replicas={.spec.replicas}{"\n"}'
+wds replicas=1
+edge replicas=3
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$ for i in $(seq 1 240); do
+    echo "--- poll $i $(date -Is) ---"
+    kubectl --context edge-1 -n ursa-namespace-template get deploy ursa-deploy-low \
+      -o jsonpath='deploy replicas={.spec.replicas} rv={.metadata.resourceVersion}{"\n"}'
+    kubectl --context edge-1 -n ursa-namespace-template get hpa ursa-hpa-low \
+      -o jsonpath='hpa current={.status.currentReplicas} desired={.status.desiredReplicas} lastScale={.status.lastScaleTime} able={.status.condi
+tions[?(@.type=="AbleToScale")].reason}{"\n"}'
+    sleep 5
+  done
+--- poll 1 2026-07-28T14:01:12-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 2 2026-07-28T14:01:17-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 3 2026-07-28T14:01:22-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 4 2026-07-28T14:01:27-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 5 2026-07-28T14:01:32-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 6 2026-07-28T14:01:38-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 7 2026-07-28T14:01:43-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 8 2026-07-28T14:01:48-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 9 2026-07-28T14:01:53-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 10 2026-07-28T14:01:58-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 11 2026-07-28T14:02:04-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 12 2026-07-28T14:02:09-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 13 2026-07-28T14:02:14-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 14 2026-07-28T14:02:19-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 15 2026-07-28T14:02:24-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 16 2026-07-28T14:02:30-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 17 2026-07-28T14:02:35-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 18 2026-07-28T14:02:40-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 19 2026-07-28T14:02:45-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 20 2026-07-28T14:02:50-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 21 2026-07-28T14:02:56-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 22 2026-07-28T14:03:01-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 23 2026-07-28T14:03:06-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 24 2026-07-28T14:03:11-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 25 2026-07-28T14:03:16-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 26 2026-07-28T14:03:21-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+--- poll 27 2026-07-28T14:03:27-06:00 ---
+deploy replicas=3 rv=83782
+hpa current=3 desired=3 lastScale=2026-07-28T20:00:14Z able=SucceededGetScale
+************************************************************************************************
+--- poll 28 2026-07-28T14:03:32-06:00 ---
+deploy replicas=3 rv=84118
+hpa current=1 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededRescale
+--- poll 29 2026-07-28T14:03:37-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=1 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededRescale
+--- poll 30 2026-07-28T14:03:42-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=1 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededRescale
+************************************************************************************************
+--- poll 31 2026-07-28T14:03:47-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 32 2026-07-28T14:03:53-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 33 2026-07-28T14:03:58-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 34 2026-07-28T14:04:03-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 35 2026-07-28T14:04:08-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 36 2026-07-28T14:04:13-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 37 2026-07-28T14:04:19-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 38 2026-07-28T14:04:24-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 39 2026-07-28T14:04:29-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 40 2026-07-28T14:04:34-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 41 2026-07-28T14:04:39-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 42 2026-07-28T14:04:44-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 43 2026-07-28T14:04:50-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 44 2026-07-28T14:04:55-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 45 2026-07-28T14:05:00-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 46 2026-07-28T14:05:05-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 47 2026-07-28T14:05:10-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 48 2026-07-28T14:05:16-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 49 2026-07-28T14:05:21-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 50 2026-07-28T14:05:26-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 51 2026-07-28T14:05:31-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 52 2026-07-28T14:05:36-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 53 2026-07-28T14:05:41-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 54 2026-07-28T14:05:47-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 55 2026-07-28T14:05:52-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 56 2026-07-28T14:05:57-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 57 2026-07-28T14:06:02-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 58 2026-07-28T14:06:07-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 59 2026-07-28T14:06:12-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 60 2026-07-28T14:06:18-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 61 2026-07-28T14:06:23-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 62 2026-07-28T14:06:28-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 63 2026-07-28T14:06:33-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 64 2026-07-28T14:06:38-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 65 2026-07-28T14:06:44-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 66 2026-07-28T14:06:49-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 67 2026-07-28T14:06:54-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 68 2026-07-28T14:06:59-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 69 2026-07-28T14:07:04-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 70 2026-07-28T14:07:09-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 71 2026-07-28T14:07:15-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 72 2026-07-28T14:07:20-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 73 2026-07-28T14:07:25-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 74 2026-07-28T14:07:30-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 75 2026-07-28T14:07:35-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 76 2026-07-28T14:07:40-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 77 2026-07-28T14:07:46-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 78 2026-07-28T14:07:51-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 79 2026-07-28T14:07:56-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 80 2026-07-28T14:08:01-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 81 2026-07-28T14:08:06-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 82 2026-07-28T14:08:12-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 83 2026-07-28T14:08:17-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 84 2026-07-28T14:08:22-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+--- poll 85 2026-07-28T14:08:27-06:00 ---
+deploy replicas=3 rv=84154
+hpa current=3 desired=3 lastScale=2026-07-28T20:03:30Z able=SucceededGetScale
+************************************************************************************************
+--- poll 86 2026-07-28T14:08:32-06:00 ---
+deploy replicas=3 rv=84606
+hpa current=1 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededRescale
+--- poll 87 2026-07-28T14:08:38-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=1 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededRescale
+--- poll 88 2026-07-28T14:08:43-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=1 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededRescale
+************************************************************************************************
+--- poll 89 2026-07-28T14:08:48-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 90 2026-07-28T14:08:53-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 91 2026-07-28T14:08:58-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 92 2026-07-28T14:09:03-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 93 2026-07-28T14:09:09-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 94 2026-07-28T14:09:14-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 95 2026-07-28T14:09:19-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 96 2026-07-28T14:09:24-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 97 2026-07-28T14:09:29-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 98 2026-07-28T14:09:35-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 99 2026-07-28T14:09:40-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 100 2026-07-28T14:09:45-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 101 2026-07-28T14:09:50-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 102 2026-07-28T14:09:55-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 103 2026-07-28T14:10:00-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 104 2026-07-28T14:10:06-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 105 2026-07-28T14:10:11-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 106 2026-07-28T14:10:16-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 107 2026-07-28T14:10:21-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 108 2026-07-28T14:10:26-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 109 2026-07-28T14:10:32-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 110 2026-07-28T14:10:37-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 111 2026-07-28T14:10:42-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 112 2026-07-28T14:10:47-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 113 2026-07-28T14:10:52-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 114 2026-07-28T14:10:57-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 115 2026-07-28T14:11:03-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 116 2026-07-28T14:11:08-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 117 2026-07-28T14:11:13-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 118 2026-07-28T14:11:18-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 119 2026-07-28T14:11:23-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 120 2026-07-28T14:11:29-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 121 2026-07-28T14:11:34-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 122 2026-07-28T14:11:39-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 123 2026-07-28T14:11:44-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 124 2026-07-28T14:11:49-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 125 2026-07-28T14:11:54-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 126 2026-07-28T14:12:00-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 127 2026-07-28T14:12:05-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 128 2026-07-28T14:12:10-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 129 2026-07-28T14:12:15-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 130 2026-07-28T14:12:20-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 131 2026-07-28T14:12:25-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 132 2026-07-28T14:12:31-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 133 2026-07-28T14:12:36-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 134 2026-07-28T14:12:41-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 135 2026-07-28T14:12:46-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 136 2026-07-28T14:12:51-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 137 2026-07-28T14:12:57-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 138 2026-07-28T14:13:02-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 139 2026-07-28T14:13:07-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 140 2026-07-28T14:13:12-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 141 2026-07-28T14:13:17-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 142 2026-07-28T14:13:23-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+--- poll 143 2026-07-28T14:13:28-06:00 ---
+deploy replicas=3 rv=84646
+hpa current=3 desired=3 lastScale=2026-07-28T20:08:31Z able=SucceededGetScale
+************************************************************************************************
+--- poll 144 2026-07-28T14:13:33-06:00 ---
+deploy replicas=3 rv=85119
+hpa current=1 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededRescale
+--- poll 145 2026-07-28T14:13:38-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=1 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededRescale
+--- poll 146 2026-07-28T14:13:43-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=1 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededRescale
+************************************************************************************************
+--- poll 147 2026-07-28T14:13:49-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 148 2026-07-28T14:13:54-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 149 2026-07-28T14:13:59-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 150 2026-07-28T14:14:04-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 151 2026-07-28T14:14:09-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 152 2026-07-28T14:14:15-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 153 2026-07-28T14:14:20-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 154 2026-07-28T14:14:25-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 155 2026-07-28T14:14:30-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 156 2026-07-28T14:14:35-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 157 2026-07-28T14:14:40-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 158 2026-07-28T14:14:46-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 159 2026-07-28T14:14:51-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 160 2026-07-28T14:14:56-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 161 2026-07-28T14:15:01-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 162 2026-07-28T14:15:06-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 163 2026-07-28T14:15:12-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 164 2026-07-28T14:15:17-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 165 2026-07-28T14:15:22-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 166 2026-07-28T14:15:27-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 167 2026-07-28T14:15:32-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 168 2026-07-28T14:15:37-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 169 2026-07-28T14:15:43-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 170 2026-07-28T14:15:48-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 171 2026-07-28T14:15:53-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 172 2026-07-28T14:15:58-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 173 2026-07-28T14:16:03-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 174 2026-07-28T14:16:09-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 175 2026-07-28T14:16:14-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 176 2026-07-28T14:16:19-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 177 2026-07-28T14:16:24-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 178 2026-07-28T14:16:29-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 179 2026-07-28T14:16:34-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 180 2026-07-28T14:16:40-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 181 2026-07-28T14:16:45-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 182 2026-07-28T14:16:50-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 183 2026-07-28T14:16:55-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 184 2026-07-28T14:17:00-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 185 2026-07-28T14:17:06-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 186 2026-07-28T14:17:11-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 187 2026-07-28T14:17:16-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 188 2026-07-28T14:17:21-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 189 2026-07-28T14:17:26-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 190 2026-07-28T14:17:31-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 191 2026-07-28T14:17:37-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 192 2026-07-28T14:17:42-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 193 2026-07-28T14:17:47-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 194 2026-07-28T14:17:52-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 195 2026-07-28T14:17:57-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 196 2026-07-28T14:18:03-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 197 2026-07-28T14:18:08-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 198 2026-07-28T14:18:13-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 199 2026-07-28T14:18:18-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 200 2026-07-28T14:18:23-06:00 ---
+deploy replicas=3 rv=85138
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+************************************************************************************************
+--- poll 201 2026-07-28T14:18:29-06:00 ---
+deploy replicas=1 rv=85563
+hpa current=3 desired=3 lastScale=2026-07-28T20:13:32Z able=SucceededGetScale
+--- poll 202 2026-07-28T14:18:34-06:00 ---
+deploy replicas=3 rv=85612
+hpa current=1 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededRescale
+--- poll 203 2026-07-28T14:18:39-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=1 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededRescale
+--- poll 204 2026-07-28T14:18:44-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=1 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededRescale
+************************************************************************************************
+--- poll 205 2026-07-28T14:18:49-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 206 2026-07-28T14:18:54-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 207 2026-07-28T14:19:00-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 208 2026-07-28T14:19:05-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 209 2026-07-28T14:19:10-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 210 2026-07-28T14:19:15-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 211 2026-07-28T14:19:20-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 212 2026-07-28T14:19:25-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 213 2026-07-28T14:19:31-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 214 2026-07-28T14:19:36-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 215 2026-07-28T14:19:41-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 216 2026-07-28T14:19:46-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 217 2026-07-28T14:19:51-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 218 2026-07-28T14:19:56-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 219 2026-07-28T14:20:02-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 220 2026-07-28T14:20:07-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 221 2026-07-28T14:20:12-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 222 2026-07-28T14:20:17-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 223 2026-07-28T14:20:22-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 224 2026-07-28T14:20:27-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 225 2026-07-28T14:20:33-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 226 2026-07-28T14:20:38-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 227 2026-07-28T14:20:43-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 228 2026-07-28T14:20:48-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 229 2026-07-28T14:20:53-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 230 2026-07-28T14:20:58-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 231 2026-07-28T14:21:04-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 232 2026-07-28T14:21:09-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 233 2026-07-28T14:21:14-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 234 2026-07-28T14:21:19-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 235 2026-07-28T14:21:24-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 236 2026-07-28T14:21:29-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 237 2026-07-28T14:21:35-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 238 2026-07-28T14:21:40-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 239 2026-07-28T14:21:45-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+--- poll 240 2026-07-28T14:21:50-06:00 ---
+deploy replicas=3 rv=85634
+hpa current=3 desired=3 lastScale=2026-07-28T20:18:32Z able=SucceededGetScale
+mvn27@node0:~/Ursa/manual_tests/hpa_replicas_pingpong_repro$

@@ -1,0 +1,17 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-hpa-replicas-pingpong-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-deploy-high
+    - ursa-hpa-high
+    - ursa-deploy-low
+    - ursa-hpa-low
+    - ursa-namespace-template
