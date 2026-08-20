@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+# Intentionally NO spec.nodeName.
+# On host-type WDS the hub scheduler binds this Pod to the hosting Kind node
+# (e.g. kubeflex-control-plane). Wrap/downsync can ship that hub-local nodeName
+# to spokes — the isolation bug this bundle demonstrates.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ursa-host-wds-pod
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+    ursa-workload: host-wds-nodename
+spec:
+  containers:
+  - name: pause
+    image: registry.k8s.io/pause:3.9
+---
+# Sibling that should remain stable while the Pod flaps.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ursa-configmap-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+data:
+  note: host-wds pod nodename ping-pong sibling

@@ -1,0 +1,224 @@
+Manual repro: host-type WDS leaks hub-local state → nodeName downsync example
+===============================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/host_wds_pod_nodename_pingpong_repro/
+
+Issue draft: GITHUB_ISSUE.md
+
+Related (downstream symptom for this nodename case):
+  https://github.com/kubestellar/kubestellar/issues/3964
+
+
+Goal
+----
+File a bug that **WDS must be an isolated authoring space**. When WDS type=host
+(wds1 = hosting Kind apiserver), hub-local cluster data can trickle to spokes
+via ManifestWork — node names, Service CIDR allocations, etc.
+
+This bundle demonstrates the **simplest concrete example**: Pod nodeName.
+
+  - Seed has NO spec.nodeName
+  - Hub scheduler binds the Pod on the hosting Kind node
+  - Wrap/downsync sends that hub nodeName to edge-1
+  - Edge has no such Node → orphan-pod GC deletes → work-agent recreates
+    (ping-pong; same edge behaviour as #3964, different root cause)
+
+Other fields at risk on host-type WDS (not repro'd here, same isolation gap):
+  Service clusterIP / nodePort from the hub allocator when those addresses
+  must be provisioned independently on each spoke.
+
+
+Why host-type WDS matters
+-------------------------
+  kubeflex-type WDS: separate control plane — workloads are not scheduled onto
+  the physical Kind hosting node the same way.
+
+  host-type WDS: wds1 IS the hosting cluster. Controllers there provision
+  hub-local state that wrap treats as desired state for downsync.
+
+
+Files in this folder
+--------------------
+  REPRO.txt                              (this guide)
+  GITHUB_ISSUE.md                        (issue draft)
+  install_requirements.sh                (host prereqs)
+  setup_kubestellar_wds1host.sh          (Kind + KubeStellar, WDS type=host, edge-1)
+  create-kind-cluster-with-SSL-passthrough.sh
+  fix-klusterlet-rbac.yaml               (optional for this namespaced case)
+  pod_seed.yaml                          (Namespace + Pod + ConfigMap; no nodeName)
+  pod_policy.yaml                        (BindingPolicy → edge-1 only)
+
+
+Step 1 — Install host prerequisites (copy/paste)
+-------------------------------------------------
+  cd /path/to/manual_tests/host_wds_pod_nodename_pingpong_repro
+
+  chmod +x install_requirements.sh setup_kubestellar_wds1host.sh \
+    create-kind-cluster-with-SSL-passthrough.sh
+  ./install_requirements.sh
+
+
+  If docker group was just added, log out/in or: newgrp docker
+
+
+Step 2 — Cluster setup with host-type WDS (copy/paste)
+------------------------------------------------------
+  cd /path/to/manual_tests/host_wds_pod_nodename_pingpong_repro
+
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # WARNING: default run DELETES existing kubeflex / edge-* Kind clusters.
+  ./setup_kubestellar_wds1host.sh
+
+  # Wait until complete. Expect contexts:
+  #   kind-kubeflex, its1, wds1 (= alias of kind-kubeflex), edge-1
+
+  kubectl config get-contexts
+
+  # Confirm wds1 points at the hosting cluster
+  kubectl --context wds1 get nodes -o wide
+  # Expect something like: kubeflex-control-plane
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+
+  # REQUIRED before repro — do not continue if any check fails
+  kubectl config get-contexts
+  kubectl --context its1 get managedclusters
+  kubectl --context its1 get managedcluster edge-1 \
+    -o jsonpath='edge-1 joined={.status.conditions[?(@.type=="ManagedClusterJoined")].status}{"\n"}'
+
+  Teardown only (optional):
+    ./setup_kubestellar_wds1host.sh --cleanup-only
+
+
+Step 2 recovery — finish edge-1 if setup stopped early
+-------------------------------------------------------
+  If `context "edge-1" does not exist`, the repro cannot create ManifestWorks.
+  Complete join manually (or re-run ./setup_kubestellar_wds1host.sh):
+
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/host_wds_pod_nodename_pingpong_repro
+
+  kind create cluster --name edge-1 --kubeconfig ~/.kube/kubeflex
+  kubectl config rename-context kind-edge-1 edge-1
+
+  JOIN_CMD=$(clusteradm --kubeconfig ~/.kube/kubeflex --context its1 get token | \
+    grep '^clusteradm join' | sed 's/<cluster_name>/edge-1/' | \
+    awk -v kc="$HOME/.kube/kubeflex" \
+    '{print $0 " --context edge-1 --singleton --force-internal-endpoint-lookup --kubeconfig " kc}')
+  eval "$JOIN_CMD"
+
+  kubectl --context its1 get csr
+  clusteradm --kubeconfig ~/.kube/kubeflex --context its1 accept --clusters edge-1
+  kubectl --context its1 label managedcluster edge-1 \
+    location-group=edge name=edge-1 region=us env=dev gpu=true --overwrite
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context its1 get managedclusters
+
+
+Step 3 — Reproduce
+------------------
+  cd /path/to/manual_tests/host_wds_pod_nodename_pingpong_repro
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 apply -f pod_seed.yaml
+  kubectl --context wds1 apply -f pod_policy.yaml
+
+  # Wait for hub scheduler to bind the Pod
+  sleep 15
+
+  # Hub Pod SHOULD have nodeName = hub Kind node (NOT in seed)
+  HUB_NODE=$(kubectl --context wds1 get nodes -o jsonpath='{.items[0].metadata.name}')
+  echo "hub node=${HUB_NODE}"
+
+  kubectl --context wds1 -n ursa-namespace-template get pod ursa-host-wds-pod \
+    -o jsonpath='wds phase={.status.phase} nodeName={.spec.nodeName}{"\n"}'
+
+  # ManifestWork must carry the hub nodeName (hub-local leakage)
+  kubectl --context its1 -n edge-1 get manifestworks
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B5 -A30 'kind: Pod'
+  # Or from saved dump:
+  # kubectl --context its1 -n edge-1 get manifestworks -o yaml > /tmp/repro-mw-edge-1.yaml
+  # grep nodeName /tmp/repro-mw-edge-1.yaml
+
+
+Step 4 — Observe the GC / recreate loop (kubectl -w)
+----------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # Stream edge Pod create/delete to scrollback (Ctrl-C to stop).
+  # Label watch survives delete+recreate (watching one name can exit on delete).
+  kubectl --context edge-1 -n ursa-namespace-template get pods \
+    -l ursa-workload=host-wds-nodename -o wide -w
+
+  SUCCESS CRITERIA (watch):
+    Edge Pod cycles Pending → Failed (or disappear) → Pending again
+    NODE column stays kubeflex-control-plane (hub node name on the spoke)
+
+
+Step 5 — Edge has no hub node (why it fails)
+--------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  echo "=== hub / wds1 nodes ==="
+  kubectl --context wds1 get nodes -o wide
+
+  echo "=== edge-1 nodes ==="
+  kubectl --context edge-1 get nodes -o wide
+
+  echo "=== edge Pod binding (when present) ==="
+  kubectl --context edge-1 -n ursa-namespace-template get pod ursa-host-wds-pod -o wide \
+    2>&1 || echo "edge-1: Pod NotFound (may be between recreates)"
+
+  SUCCESS CRITERIA:
+    wds1 lists kubeflex-control-plane (or your hosting Kind node)
+    edge-1 lists edge-1-control-plane only — NO kubeflex-control-plane
+    Edge Pod spec/status NODE = kubeflex-control-plane (hub name on wrong cluster)
+    That mismatch is why orphan-pod / node lifecycle rejects the Pod on the spoke
+
+
+Clean slate (re-run)
+--------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 delete bindingpolicy ursa-bp-host-wds-pod-nodename-repro --ignore-not-found
+
+  kubectl --context edge-1 delete pod ursa-host-wds-pod -n ursa-namespace-template --ignore-not-found --wait=false
+  kubectl --context edge-1 delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context edge-1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  kubectl --context wds1 delete pod ursa-host-wds-pod -n ursa-namespace-template --ignore-not-found --wait=false
+  kubectl --context wds1 delete configmap ursa-configmap-template -n ursa-namespace-template --ignore-not-found
+  kubectl --context wds1 delete ns ursa-namespace-template --ignore-not-found --wait=false
+
+  sleep 30
+
+
+What NOT to do
+--------------
+  - Use the regular setup_kubestellar.sh (kubeflex-type WDS) — that hides
+    this host-scheduling / hub-local leakage path
+  - Put a fake nodeName in the seed — that is hardcoded_node_pod_pingpong_repro
+    (#3964); this repro needs hub scheduling with no nodeName in YAML
+  - Use a one-shot get loop — flaps are easy to miss; use kubectl -w on edge
+  - Watch by pod name only on edge — use the label selector so the stream
+    survives delete+recreate
+
+
+Expected behaviour
+------------------
+  WDS must be an isolated space for objects destined for spokes. Hub-local
+  cluster state (node bindings, Service CIDR allocations, etc.) must not
+  trickle to edges as portable desired state.
+
+  We did not specify nodeName, but the Pod was bound on the hub and that
+  binding was downsynced to a spoke where the node does not exist. The same
+  isolation requirement applies when hub-provisioned IPs must be allocated
+  on the edge instead.
+
+  Prefer kubeflex-type WDS for workload authoring, or strip/ignore hub-local
+  fields on downsync when host-type WDS is used.
