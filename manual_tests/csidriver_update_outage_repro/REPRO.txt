@@ -1,0 +1,155 @@
+Manual repro: CSIDriver — edge drift invisible; hub config updates delivered as delete + re-create of the driver
+================================================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/csidriver_update_outage_repro/
+
+Related: the Service edge-drift issue and the Pod image-sync issue (same
+reconciliation promise; CSIDriver is stricter — no live-spec comparison at all)
+plus the delete+create misoperation unique to this kind.
+
+Repro shape (two behaviours, same edge):
+  Phase A — behaviour 1 (edge drift invisible):
+    patch fsGroupPolicy on edge-1 -> never noticed or reverted (2+ resyncs), MW green
+  Phase B — behaviour 2 (update becomes outage):
+    patch storageCapacity on the WDS (legal in-place update, mutable since k8s 1.23)
+    -> every edge executes DELETE + CREATE of the CSIDriver
+    proof: metadata.uid and creationTimestamp change on the edge; watch shows
+    DELETED then ADDED events
+  Phase B doubles as the aliveness control: the agent acts the moment the hub
+  changes, which proves behaviour 1 was a refusal to look, not a dead agent.
+
+Note: the agent's periodic resync is ~5 minutes; hub-side changes propagate
+event-driven (~1 min). Waits sized accordingly.
+
+Seed provenance: csidriver_seed.yaml is the my-storage.example.com seed from our
+automated test generation (Resources/resources_v4.yaml), unchanged.
+
+Ursa automated hits (examples; kind set 06 of our v4 analysis):
+  tests/v4_complete_1.36/shard1/run_ursa-bp-my-storage.example.com__disconnect_before_both__reset_always/my-storage.example.com/testcase_001_...
+  (edge drift on fsGroupPolicy/podInfoOnMount/storageCapacity never reverted;
+   hub hash moves delivered as delete+re-create; half-heal read 186)
+
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  csidriver_seed.yaml   (cluster-scoped CSIDriver, fsGroupPolicy: File)
+  csidriver_policy.yaml (BindingPolicy -> edge-1, edge-2)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/csidriver_update_outage_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+
+Step 3 — Downsync the seed
+--------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/csidriver_update_outage_repro
+
+  kubectl --context wds1 apply -f csidriver_seed.yaml
+  kubectl --context wds1 apply -f csidriver_policy.yaml
+  sleep 60
+
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+
+  SUCCESS: CSIDriver exists on edge-1, fsGroupPolicy=File. RECORD the uid and
+  creationTimestamp — Phase B proves the outage with them.
+
+
+Step 4 — Phase A: behaviour 1 — drift fsGroupPolicy on the EDGE
+----------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 patch csidriver my-storage.example.com \
+    --type merge -p '{"spec":{"fsGroupPolicy":"None"}}'
+
+  sleep 720   # spans two ~5-min resyncs; wait longer if you like — never corrected
+
+  echo '--- edge-1 keeps OUR value; hub still declares File ---'
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid}{"\n"}'
+  kubectl --context wds1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy}{"\n"}'
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Applied' | head -8
+
+  BUG 1 REPRODUCED when: edge fsGroupPolicy=None across resyncs, hub declares
+  File, ManifestWork Applied=True / Available=True. Same uid as step 3 (no
+  write of any kind happened).
+
+
+Step 5 — Phase B: behaviour 2 — legal in-place update on the HUB becomes delete + create
+----------------------------------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # start a watch that records watch-event types (DELETED / ADDED)
+  timeout 120 kubectl --context edge-1 get csidriver --watch --output-watch-events \
+    -o custom-columns='EVENT:.type,NAME:.object.metadata.name,UID:.object.metadata.uid' &
+
+  sleep 2
+  # the hub update: in-place, legal since k8s 1.23 (storageCapacity is mutable)
+  kubectl --context wds1 patch csidriver my-storage.example.com \
+    --type merge -p '{"spec":{"storageCapacity":false}}'
+  sleep 110   # let the watch finish
+
+  echo '--- edge-1 after the hub update: NEW uid + NEW creationTimestamp = delete + create ---'
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='storageCapacity={.spec.storageCapacity} fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+
+  BUG 2 REPRODUCED when:
+    the watch printed DELETED then ADDED for my-storage.example.com
+    the uid and creationTimestamp differ from step 3/4
+    storageCapacity=false (the update DID arrive — as an outage;
+      note it also flushed Phase A's drift, correction by replacement)
+    (on the WDS the same patch was a plain in-place update: uid unchanged there)
+
+
+Step 6 — The ManifestWork is green throughout
+---------------------------------------------
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Applied' | head -8
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Available' | head -8
+
+
+Snapshot:
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  Behaviour 1: edge changes to delivered fields should be reverted or reported.
+  Behaviour 2: an update that is legal in place (storageCapacity since 1.23; fsGroupPolicy and
+  podInfoOnMount since 1.30; tokenRequests, requiresRepublish, seLinuxMount)
+  should be applied in place, preserving object identity; delete + create should be at
+  most a last resort for genuinely immutable conflicts, loudly.
+  Per-field ownership (ManifestWork updateStrategy: ServerSideApply) gives both.
+
+
+Reset — tear down this repro's objects (fast, ~10 s to propagate)
+-----------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 delete bindingpolicy ursa-bp-csidriver-update-outage-repro --ignore-not-found
+  kubectl --context wds1 delete csidriver my-storage.example.com --ignore-not-found
+  # (cluster-scoped, no namespace; the MW teardown removes the edge copies, drift included)
+
+  # verify:
+  for c in wds1 edge-1 edge-2; do echo "[$c]"; kubectl --context $c get csidriver my-storage.example.com 2>&1 | tail -1; done
+  kubectl --context its1 -n edge-1 get manifestworks

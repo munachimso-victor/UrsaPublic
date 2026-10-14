@@ -1,0 +1,162 @@
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$ kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$ kubectl --context wds1 apply -f csidriver_seed.yaml
+  kubectl --context wds1 apply -f csidriver_policy.yaml
+  sleep 60
+
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+csidriver.storage.k8s.io/my-storage.example.com created
+bindingpolicy.control.kubestellar.io/ursa-bp-csidriver-update-outage-repro created
+fsGroupPolicy=File uid=9479ba3b-753b-469e-8751-6c1cf86e9191 created=2026-10-14T16:55:39Z
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$ kubectl --context edge-1 patch csidriver my-storage.example.com \
+    --type merge -p '{"spec":{"fsGroupPolicy":"None"}}'
+
+  sleep 720   # spans two ~5-min resyncs; wait longer if you like — never corrected
+
+  echo '--- edge-1 keeps OUR value; hub still declares File ---'
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid}{"\n"}'
+  kubectl --context wds1 get csidriver my-storage.example.com \
+    -o jsonpath='fsGroupPolicy={.spec.fsGroupPolicy}{"\n"}'
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Applied' | head -8
+csidriver.storage.k8s.io/my-storage.example.com patched
+--- edge-1 keeps OUR value; hub still declares File ---
+fsGroupPolicy=None uid=9479ba3b-753b-469e-8751-6c1cf86e9191
+fsGroupPolicy=File
+      status: "True"
+      type: Applied
+    - lastTransitionTime: "2026-10-14T06:08:17Z"
+      message: All resources are available
+--
+          status: "True"
+          type: Applied
+        - lastTransitionTime: "2026-10-14T06:08:17Z"
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$  timeout 120 kubectl --context edge-1 get csidriver --watch --output-watch-events \
+    -o custom-columns='EVENT:.type,NAME:.object.metadata.name,UID:.object.metadata.uid' &
+
+  sleep 2
+  # the hub update: in-place, legal since k8s 1.23 (storageCapacity is mutable)
+  kubectl --context wds1 patch csidriver my-storage.example.com \
+    --type merge -p '{"spec":{"storageCapacity":false}}'
+  sleep 110   # let the watch finish
+
+  echo '--- edge-1 after the hub update: NEW uid + NEW creationTimestamp = delete + create ---'
+  kubectl --context edge-1 get csidriver my-storage.example.com \
+    -o jsonpath='storageCapacity={.spec.storageCapacity} fsGroupPolicy={.spec.fsGroupPolicy} uid={.metadata.uid} created={.metadata.creationTimestamp}{"\n"}'
+[1] 627829
+EVENT   NAME                     UID
+ADDED   my-storage.example.com   9479ba3b-753b-469e-8751-6c1cf86e9191
+csidriver.storage.k8s.io/my-storage.example.com patched
+DELETED   my-storage.example.com   9479ba3b-753b-469e-8751-6c1cf86e9191
+ADDED     my-storage.example.com   7836d683-e9da-410f-9c5b-135beacd827c
+--- edge-1 after the hub update: NEW uid + NEW creationTimestamp = delete + create ---
+storageCapacity=false fsGroupPolicy=File uid=7836d683-e9da-410f-9c5b-135beacd827c created=2026-10-14T17:19:14Z
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+[1]+  Exit 124                timeout 120 kubectl --context edge-1 get csidriver --watch --output-watch-events -o custom-columns='EVENT:.type,NAME:.object.metadata.name,UID:.object.metadata.uid'
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$   kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Applied' | head -8
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Available' | head -8
+      status: "True"
+      type: Applied
+    - lastTransitionTime: "2026-10-14T06:08:17Z"
+      message: All resources are available
+--
+          status: "True"
+          type: Applied
+        - lastTransitionTime: "2026-10-14T06:08:17Z"
+      status: "True"
+      type: Available
+    resourceStatus:
+      manifests:
+--
+          status: "True"
+          type: Available
+        - lastTransitionTime: "2026-10-14T06:08:17Z"
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$ bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-10-14_12:23:23
+Checking script dependencies:
+✔ kubectl version v1.37.1 at /usr/local/bin/kubectl
+✔ helm version v3.22.0 at /usr/local/bin/helm
+✔ jq version jq-1.6 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.54.1 at /usr/local/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-yD0V
+Using kubeconfig(s): /users/mvn27/.kube/kubeflex
+Validating contexts(s):
+✔ edge-1
+✔ edge-2
+✔ edge-3 *
+✔ its1
+✔ kind-kubeflex
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-kubeflex
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-kubeflex
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6488fcfc67-7jlm8, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-kubeflex, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-kubeflex, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5fcbcc55fc-pbtgl namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-549cfc99c6-5x74v namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-yD0V/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-yD0V
+mvn27@node0:~/Ursa/manual_tests/csidriver_update_outage_repro$

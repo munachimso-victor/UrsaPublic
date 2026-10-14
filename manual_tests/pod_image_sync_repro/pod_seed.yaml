@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+---
+# The bare Pod under test: image is one of the few legally in-place-mutable Pod fields.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ursa-pod-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  containers:
+  - name: nginx
+    image: nginx:1.27.1
+    ports:
+    - containerPort: 80
+---
+# Deployment control: the same image edits ARE synced in both directions for a Deployment.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ursa-deployment-template
+  namespace: ursa-namespace-template
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ursa-workload: pod-sync-control
+  template:
+    metadata:
+      labels:
+        ursa-workload: pod-sync-control
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27.1
+        ports:
+        - containerPort: 80

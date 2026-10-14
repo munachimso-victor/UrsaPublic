@@ -1,0 +1,174 @@
+Manual repro: Service edge drift on delivered fields is never reconciled (only selector/type are defended)
+==========================================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/service_edge_drift_repro/
+
+Related: #3978 (stripped pins; separate discussion) and the healthCheckNodePort
+issue (transform incoherence). This one is about fields KubeStellar DOES
+deliver: they arrive once and are then never reconciled.
+
+Repro shape (controls first, then the bug, all on the same edge):
+  Phase A — controls (reconciliation works):
+    a1) drift selector on the Service      -> reverted (a defended field)
+    a2) drift the Deployment's image       -> reverted (another kind, same edit)
+  Phase B — the bug:
+    b)  drift delivered Service fields     -> NEVER corrected, MW stays green
+  Optional:
+    c)  touch the hub Service              -> full rewrite flushes the drift
+                                              (correction by accident, not reconciliation)
+
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  service_seed.yaml   (namespace + ClusterIP Service + ExternalName Service + Deployment)
+  service_policy.yaml (BindingPolicy -> edge-1, edge-2)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/service_edge_drift_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+
+Step 3 — Downsync the seed
+--------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/service_edge_drift_repro
+
+  kubectl --context wds1 apply -f service_seed.yaml
+  kubectl --context wds1 apply -f service_policy.yaml
+  sleep 60
+
+  echo '=== delivery check (both Services + Deployment on edge-1) ==='
+  kubectl --context edge-1 get svc,deploy -n ursa-namespace-template
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-externalname-template \
+    -o jsonpath='externalName={.spec.externalName}{"\n"}'
+
+  SUCCESS: all three objects exist on edge-1; externalName=backend.example.com
+
+
+Step 4 — Phase A, control 1: drift a defended Service field (selector)
+----------------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 patch svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    --type merge -p '{"spec":{"selector":{"ursa-workload":"tampered"}}}'
+
+  # The revert happens at the agent's next periodic resync (~5 minutes).
+  # Patch the Deployment too (step 5), then check both after one resync.
+
+
+Step 5 — Phase A, control 2: the same edit on a Deployment
+----------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 patch deploy -n ursa-namespace-template ursa-deployment-template \
+    --type json -p '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.25.0"}]'
+
+  sleep 360   # span one ~5-minute resync
+
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    -o jsonpath='selector={.spec.selector}{"\n"}'
+  kubectl --context edge-1 get deploy -n ursa-namespace-template ursa-deployment-template \
+    -o jsonpath='image={.spec.template.spec.containers[0].image}{"\n"}'
+
+  SUCCESS (controls): selector back to the hub's value (ursa-workload:
+  ultimate-test) AND image back to nginx:1.27.1 — reconciliation machinery
+  works, driven by the periodic resync (observed: both reverted in the same
+  sweep, ~5 min after delivery).
+
+
+Step 6 — Phase B: drift delivered Service fields (the bug)
+----------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  # headline: silently repoint the ExternalName Service at a different backend
+  kubectl --context edge-1 patch svc -n ursa-namespace-template ursa-externalname-template \
+    --type merge -p '{"spec":{"externalName":"attacker.example.net"}}'
+
+  # second example: change a delivered port field on the ClusterIP Service
+  kubectl --context edge-1 patch svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    --type json -p '[{"op":"replace","path":"/spec/ports/0/targetPort","value":9999}]'
+
+  sleep 720   # spans two ~5-minute resyncs; wait longer if you like — it never corrects
+
+  echo '=== edge-1 keeps OUR drifted values ==='
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-externalname-template \
+    -o jsonpath='externalName={.spec.externalName}{"\n"}'
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    -o jsonpath='targetPort={.spec.ports[0].targetPort}{"\n"}'
+
+  echo '=== hub still declares the originals ==='
+  kubectl --context wds1 get svc -n ursa-namespace-template ursa-externalname-template \
+    -o jsonpath='externalName={.spec.externalName}{"\n"}'
+  kubectl --context wds1 get svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    -o jsonpath='targetPort={.spec.ports[0].targetPort}{"\n"}'
+
+  echo '=== ManifestWork still fully green ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -A3 'type: Applied'
+
+  BUG REPRODUCED when:
+    edge-1: externalName=attacker.example.net, targetPort=9999
+    wds1:   externalName=backend.example.com,  targetPort=8080
+    MW:     Applied=True / Available=True, no signal anywhere
+    Same edit style that was reverted in Phase A (steps 4 and 5).
+
+
+Step 7 — Optional: correction happens only by accident
+------------------------------------------------------
+  # Touch ANY hub spec field of the drifted Service: the full-spec rewrite
+  # flushes the edge drift as a side effect.
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 patch svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    --type json -p '[{"op":"replace","path":"/spec/ports/0/port","value":81}]'
+  sleep 60
+
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-clusterip-auto-template \
+    -o jsonpath='port={.spec.ports[0].port} targetPort={.spec.ports[0].targetPort}{"\n"}'
+
+  EXPECTED: port=81 AND targetPort back to 8080 — the drift survived every
+  reconcile until an unrelated hub change happened to rewrite the spec.
+
+
+Snapshot after Step 6 (or 7):
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  Fields the hub delivers are desired state: an edge change to them should be
+  reverted (like selector/type, like Deployment) or at minimum reported.
+  The ManifestWork updateStrategy ServerSideApply in the OCM API KubeStellar
+  pins is the principled path: enforce declared fields, leave undeclared
+  fields to the edge.
+
+
+Reset — tear down this repro's objects (fast, ~10 s to propagate)
+-----------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 delete bindingpolicy ursa-bp-service-edge-drift-repro --ignore-not-found
+  kubectl --context wds1 delete -f service_seed.yaml --ignore-not-found
+
+  # verify (NotFound everywhere; only the status addon MW remains):
+  for c in wds1 edge-1 edge-2; do echo "[$c]"; kubectl --context $c get ns ursa-namespace-template 2>&1 | tail -1; done
+  kubectl --context its1 -n edge-1 get manifestworks

@@ -1,0 +1,16 @@
+# From our automated test generation (the my-storage.example.com seed).
+# Cluster-scoped; fsGroupPolicy / podInfoOnMount / storageCapacity are the
+# mutable-in-place config fields (Kubernetes 1.23 / 1.29+).
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: my-storage.example.com
+  labels:
+    app.kubernetes.io/managed-by: ursa-testing
+spec:
+  attachRequired: true
+  podInfoOnMount: true
+  volumeLifecycleModes:
+  - Persistent
+  storageCapacity: true
+  fsGroupPolicy: File

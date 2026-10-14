@@ -1,0 +1,196 @@
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ kubectl --context wds1 get bindingpolicy ursa-bp-service-healthchecknodeport-repro 2>&1 || true
+Error from server (NotFound): bindingpolicies.control.kubestellar.io "ursa-bp-service-healthchecknodeport-repro" not found
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ kubectl --context edge-1 apply -f service_seed.yaml
+  sleep 10
+
+  echo '=== Phase A: direct apply on edge-1 (should be admitted + allocated) ==='
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template -o wide
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template \
+    -o jsonpath='type={.spec.type} externalTrafficPolicy={.spec.externalTrafficPolicy} healthCheckNodePort={.spec.healthCheckNodePort}{"\n"}'
+namespace/ursa-namespace-template created
+service/ursa-nodeport-localized-template created
+=== Phase A: direct apply on edge-1 (should be admitted + allocated) ===
+NAME                               TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE   SELECTOR
+ursa-nodeport-localized-template   LoadBalancer   10.96.253.33   <pending>     80:32373/TCP   10s   app.kubernetes.io/managed-by=ursa-testing,ursa-workload=ultimate-test
+type=LoadBalancer externalTrafficPolicy=Local healthCheckNodePort=31033
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ kubectl --context edge-1 delete -f service_seed.yaml --ignore-not-found --wait=false
+  sleep 30
+
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template 2>&1
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+namespace "ursa-namespace-template" deleted
+service "ursa-nodeport-localized-template" deleted from ursa-namespace-template namespace
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+Error from server (NotFound): namespaces "ursa-namespace-template" not found
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ kubectl --context wds1 apply -f service_seed.yaml
+  kubectl --context wds1 apply -f service_policy.yaml
+  sleep 60
+namespace/ursa-namespace-template created
+service/ursa-nodeport-localized-template created
+bindingpolicy.control.kubestellar.io/ursa-bp-service-healthchecknodeport-repro created
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ echo '=== WDS Service (hub allocated healthCheckNodePort; trio is valid here) ==='
+  kubectl --context wds1 get svc -n ursa-namespace-template ursa-nodeport-localized-template \
+    -o jsonpath='type={.spec.type} externalTrafficPolicy={.spec.externalTrafficPolicy} healthCheckNodePort={.spec.healthCheckNodePort}{"\n"}'
+
+  echo '=== ManifestWork payload (healthCheckNodePort kept, externalTrafficPolicy GONE) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B6 -A10 'healthCheckNodePort'
+
+  echo '=== ManifestWork status (Applied=False, validation refusal) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B3 -A3 'Failed to apply manifest'
+
+  echo '=== edge-1 after downsync (namespace delivered, Service REFUSED) ==='
+  kubectl --context edge-1 get ns ursa-namespace-template
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template 2>&1
+=== WDS Service (hub allocated healthCheckNodePort; trio is valid here) ===
+type=LoadBalancer externalTrafficPolicy=Local healthCheckNodePort=31612
+=== ManifestWork payload (healthCheckNodePort kept, externalTrafficPolicy GONE) ===
+          labels:
+            app.kubernetes.io/managed-by: ursa-testing
+          name: ursa-nodeport-localized-template
+          namespace: ursa-namespace-template
+        spec:
+          allocateLoadBalancerNodePorts: true
+          healthCheckNodePort: 31612
+          ports:
+          - name: http-local
+            nodePort: null
+            port: 80
+            protocol: TCP
+            targetPort: 8080
+          selector:
+            app.kubernetes.io/managed-by: ursa-testing
+            ursa-workload: ultimate-test
+          type: LoadBalancer
+--
+      type: Available
+    resourceStatus:
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-10-14T15:23:41Z"
+          message: 'Failed to apply manifest: Service "ursa-nodeport-localized-template"
+            is invalid: spec.healthCheckNodePort: Invalid value: 31612: may only be
+            set when `type` is ''LoadBalancer'' and `externalTrafficPolicy` is ''Local'''
+          reason: AppliedManifestFailed
+          status: "False"
+          type: Applied
+        - lastTransitionTime: "2026-10-14T15:23:41Z"
+          message: Resource is not available
+          reason: ResourceNotAvailable
+          status: "False"
+          type: Available
+        resourceMeta:
+=== ManifestWork status (Applied=False, validation refusal) ===
+  status:
+    conditions:
+    - lastTransitionTime: "2026-10-14T15:23:41Z"
+      message: Failed to apply manifest work
+      observedGeneration: 1
+      reason: AppliedManifestWorkFailed
+      status: "False"
+--
+      manifests:
+      - conditions:
+        - lastTransitionTime: "2026-10-14T15:23:41Z"
+          message: 'Failed to apply manifest: Service "ursa-nodeport-localized-template"
+            is invalid: spec.healthCheckNodePort: Invalid value: 31612: may only be
+            set when `type` is ''LoadBalancer'' and `externalTrafficPolicy` is ''Local'''
+          reason: AppliedManifestFailed
+=== edge-1 after downsync (namespace delivered, Service REFUSED) ===
+NAME                      STATUS   AGE
+ursa-namespace-template   Active   2m12s
+Error from server (NotFound): services "ursa-nodeport-localized-template" not found
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$ bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-10-14_10:43:55
+Checking script dependencies:
+✔ kubectl version v1.37.1 at /usr/local/bin/kubectl
+✔ helm version v3.22.0 at /usr/local/bin/helm
+✔ jq version jq-1.6 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.54.1 at /usr/local/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-ZIsV
+Using kubeconfig(s): /users/mvn27/.kube/kubeflex
+Validating contexts(s):
+✔ edge-1
+✔ edge-2
+✔ edge-3 *
+✔ its1
+✔ kind-kubeflex
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-kubeflex
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-kubeflex
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6488fcfc67-7jlm8, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-kubeflex, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-kubeflex, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5fcbcc55fc-pbtgl namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-549cfc99c6-5x74v namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-ZIsV/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-ZIsV
+mvn27@node0:~/Ursa/manual_tests/service_healthchecknodeport_repro$

@@ -1,0 +1,143 @@
+Manual repro: Pod image updates are not synced in either direction (hub updates never delivered, edge drift never reverted)
+===========================================================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/pod_image_sync_repro/
+
+Related: the Service edge-drift issue (same reconciliation promise, one direction;
+here it breaks in BOTH directions) and #3978 context.
+
+Repro shape (controls and bug interleaved, both directions, same edge):
+  Phase A — hub direction:
+    a1) hub updates the Deployment image  -> delivered to the edge (control, ~1 min)
+    a2) hub updates the Pod image         -> NEVER delivered (bug; survives 2+ resyncs)
+  Phase B — edge direction:
+    b1) edge changes the Deployment image -> reverted at the next ~5-min resync (control)
+    b2) edge changes the Pod image        -> NEVER reverted (bug)
+  MW stays Applied=True / Available=True throughout.
+
+Note: the agent's periodic resync is ~5 minutes; hub-side changes propagate
+event-driven (~1 min). Waits below are sized to span 2 resyncs where we claim
+"never".
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  pod_seed.yaml   (namespace + bare Pod + Deployment control, both nginx:1.27.1)
+  pod_policy.yaml (BindingPolicy -> edge-1, edge-2)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/pod_image_sync_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+
+Step 3 — Downsync the seed
+--------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/pod_image_sync_repro
+
+  kubectl --context wds1 apply -f pod_seed.yaml
+  kubectl --context wds1 apply -f pod_policy.yaml
+  sleep 60
+
+  kubectl --context edge-1 get pod,deploy -n ursa-namespace-template
+  kubectl --context edge-1 get pod -n ursa-namespace-template ursa-pod-template \
+    -o jsonpath='pod image={.spec.containers[0].image}{"\n"}'
+
+  SUCCESS: Pod and Deployment exist on edge-1, both nginx:1.27.1.
+
+
+Step 4 — Phase A: update both images on the HUB
+-----------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context wds1 patch deploy -n ursa-namespace-template ursa-deployment-template \
+    --type json -p '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.27.2"}]'
+  kubectl --context wds1 patch pod -n ursa-namespace-template ursa-pod-template \
+    --type json -p '[{"op":"replace","path":"/spec/containers/0/image","value":"nginx:1.27.2"}]'
+
+  sleep 720   # spans two ~5-min resyncs
+
+  echo '--- edge-1: Deployment updated (control), Pod NOT (bug) ---'
+  kubectl --context edge-1 get deploy -n ursa-namespace-template ursa-deployment-template \
+    -o jsonpath='deploy image={.spec.template.spec.containers[0].image}{"\n"}'
+  kubectl --context edge-1 get pod -n ursa-namespace-template ursa-pod-template \
+    -o jsonpath='pod image={.spec.containers[0].image}{"\n"}'
+  echo '--- hub declares 1.27.2 for both ---'
+  kubectl --context wds1 get pod -n ursa-namespace-template ursa-pod-template \
+    -o jsonpath='pod image={.spec.containers[0].image}{"\n"}'
+
+  BUG (hub direction) when: edge deploy image=nginx:1.27.2 but edge pod
+  image=nginx:1.27.1 while the hub pod declares nginx:1.27.2.
+
+
+Step 5 — Phase B: change both images on the EDGE
+------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 patch deploy -n ursa-namespace-template ursa-deployment-template \
+    --type json -p '[{"op":"replace","path":"/spec/template/spec/containers/0/image","value":"nginx:1.25.0"}]'
+  kubectl --context edge-1 patch pod -n ursa-namespace-template ursa-pod-template \
+    --type json -p '[{"op":"replace","path":"/spec/containers/0/image","value":"nginx:1.25.0"}]'
+
+  sleep 720   # spans two ~5-min resyncs
+
+  echo '--- edge-1: Deployment reverted (control), Pod keeps our drift (bug) ---'
+  kubectl --context edge-1 get deploy -n ursa-namespace-template ursa-deployment-template \
+    -o jsonpath='deploy image={.spec.template.spec.containers[0].image}{"\n"}'
+  kubectl --context edge-1 get pod -n ursa-namespace-template ursa-pod-template \
+    -o jsonpath='pod image={.spec.containers[0].image}{"\n"}'
+
+  BUG (edge direction) when: edge deploy image back to nginx:1.27.2 (the hub's
+  current value) but edge pod image=nginx:1.25.0 forever.
+
+
+Step 6 — The ManifestWork is green throughout
+---------------------------------------------
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Applied'
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | grep -B1 -A2 'type: Available'
+
+  Applied=True / Available=True on every manifest: no signal for either
+  direction of the Pod mismatch.
+
+
+Snapshot:
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  The mutable Pod fields (image, activeDeadlineSeconds, toleration additions)
+  are desired state like any other: hub updates should be delivered, edge
+  drift should be reverted or reported. Per-field ownership (ManifestWork
+  updateStrategy: ServerSideApply) gives this without fighting cluster-owned
+  fields like nodeName.
+
+
+Reset — tear down this repro's objects (fast, ~10 s to propagate)
+-----------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 delete bindingpolicy ursa-bp-pod-image-sync-repro --ignore-not-found
+  kubectl --context wds1 delete -f pod_seed.yaml --ignore-not-found
+
+  # verify (NotFound everywhere; only the status addon MW remains):
+  for c in wds1 edge-1 edge-2; do echo "[$c]"; kubectl --context $c get ns ursa-namespace-template 2>&1 | tail -1; done
+  kubectl --context its1 -n edge-1 get manifestworks

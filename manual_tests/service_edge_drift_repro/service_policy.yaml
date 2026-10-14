@@ -1,0 +1,16 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: ursa-bp-service-edge-drift-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: edge-1
+  - matchLabels:
+      name: edge-2
+  downsync:
+  - objectNames:
+    - ursa-clusterip-auto-template
+    - ursa-externalname-template
+    - ursa-deployment-template
+    - ursa-namespace-template

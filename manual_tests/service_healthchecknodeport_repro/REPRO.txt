@@ -1,0 +1,172 @@
+Manual repro: Service transform strips externalTrafficPolicy, keeps healthCheckNodePort → every edge refuses the Service
+========================================================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/service_healthchecknodeport_repro/
+
+Related: #3978 (Service pins stripped). This one is distinct: the transform
+produces a SELF-CONTRADICTORY object that no cluster can apply at all.
+
+Repro uses the **same edge cluster twice** with the **same yaml**:
+  A) apply directly to edge-1  → Service admitted, healthCheckNodePort allocated locally
+  B) clean up, apply via WDS   → wrapped object illegal, Applied=False forever, NO Service on edges
+
+
+Goal
+----
+On one WEC (edge-1), show the LoadBalancer+Local Service is perfectly valid
+when applied locally, then show KubeStellar downsync breaks it on that same
+cluster:
+
+  Phase A — direct to edge-1 (control):
+    kubectl apply service_seed.yaml on edge-1
+    Service admitted; apiserver auto-allocates spec.healthCheckNodePort
+    (external IP stays <pending> on kind — irrelevant to the bug)
+
+  Phase B — same yaml via hub (bug):
+    delete Phase A objects from edge-1
+    kubectl apply service_seed.yaml + service_policy.yaml on wds1
+    ManifestWork payload has healthCheckNodePort but NO externalTrafficPolicy
+    MW Applied=False: "spec.healthCheckNodePort: Invalid value: ...: may only
+      be set when `type` is 'LoadBalancer' and `externalTrafficPolicy` is 'Local'"
+    edge-1 (and edge-2) end with NO Service; namespace delivered fine
+
+
+Seed provenance: service_seed.yaml is the ursa-bp-nodeport-localized seed from
+our automated test generation (Resources/resources_v4.yaml), with the
+testcase's legal spec.type change (NodePort -> LoadBalancer) baked in.
+
+Ursa automated hits (6 cases, all shard23 testcase_009):
+  tests/v4_complete_1.36/shard23/run_ursa-bp-nodeport-localized__scalar6-10__reset_always/testcase_009_ursa-bp-nodeport-localized_scalar_spec_type_bank_LoadBalancer
+  tests/v4_complete_1.36/shard23/run_ursa-bp-nodeport-localized__disconnect_hub__scalar6-10__reset_on_failure/testcase_009_ursa-bp-nodeport-localized_scalar_spec_type_bank_LoadBalancer
+  (+ the other 4 mode/reset combinations of the same run family)
+
+
+Files in this folder
+--------------------
+  REPRO.txt, GITHUB_ISSUE.md
+  install_requirements.sh, setup_kubestellar.sh
+  create-kind-cluster-with-SSL-passthrough.sh, fix-klusterlet-rbac.yaml
+  service_seed.yaml   (Service type LoadBalancer + externalTrafficPolicy Local)
+  service_policy.yaml (BindingPolicy → edge-1, edge-2)
+
+
+Step 1 — Install host prerequisites
+------------------------------------
+  cd /path/to/manual_tests/service_healthchecknodeport_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+
+Step 2 — KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  ./setup_kubestellar.sh
+
+  kubectl --context edge-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context edge-3 apply -f fix-klusterlet-rbac.yaml
+
+  # Confirm wds1 is empty for this repro (no BindingPolicy / seed yet)
+  kubectl --context wds1 get bindingpolicy ursa-bp-service-healthchecknodeport-repro 2>&1 || true
+
+
+Step 3 — Phase A: apply seed directly on edge-1 (control)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/service_healthchecknodeport_repro
+
+  kubectl --context edge-1 apply -f service_seed.yaml
+  sleep 10
+
+  echo '=== Phase A: direct apply on edge-1 (should be admitted + allocated) ==='
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template -o wide
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template \
+    -o jsonpath='type={.spec.type} externalTrafficPolicy={.spec.externalTrafficPolicy} healthCheckNodePort={.spec.healthCheckNodePort}{"\n"}'
+
+  SUCCESS (Phase A):
+    Service exists
+    type=LoadBalancer externalTrafficPolicy=Local healthCheckNodePort=<allocated, e.g. 3xxxx>
+    (EXTERNAL-IP <pending> is fine on kind — not part of the bug)
+
+
+Step 4 — Clean up edge-1 before Phase B
+---------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  kubectl --context edge-1 delete -f service_seed.yaml --ignore-not-found --wait=false
+  sleep 30
+
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template 2>&1
+  kubectl --context edge-1 get ns ursa-namespace-template 2>&1
+
+  # Both should be NotFound (or terminating gone) before hub push
+
+
+Step 5 — Phase B: same yaml via WDS + BindingPolicy (bug)
+---------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  cd /path/to/manual_tests/service_healthchecknodeport_repro
+
+  kubectl --context wds1 apply -f service_seed.yaml
+  kubectl --context wds1 apply -f service_policy.yaml
+  sleep 60
+
+
+Step 6 — Verify Phase B
+-----------------------
+  export KUBECONFIG=~/.kube/kubeflex
+
+  echo '=== WDS Service (hub allocated healthCheckNodePort; trio is valid here) ==='
+  kubectl --context wds1 get svc -n ursa-namespace-template ursa-nodeport-localized-template \
+    -o jsonpath='type={.spec.type} externalTrafficPolicy={.spec.externalTrafficPolicy} healthCheckNodePort={.spec.healthCheckNodePort}{"\n"}'
+
+  echo '=== ManifestWork payload (healthCheckNodePort kept, externalTrafficPolicy GONE) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B6 -A10 'healthCheckNodePort'
+
+  echo '=== ManifestWork status (Applied=False, validation refusal) ==='
+  kubectl --context its1 -n edge-1 get manifestworks -o yaml | \
+    grep -B3 -A3 'Failed to apply manifest'
+
+  echo '=== edge-1 after downsync (namespace delivered, Service REFUSED) ==='
+  kubectl --context edge-1 get ns ursa-namespace-template
+  kubectl --context edge-1 get svc -n ursa-namespace-template ursa-nodeport-localized-template 2>&1
+
+  SUCCESS (Phase B = bug reproduced):
+    WDS: type=LoadBalancer externalTrafficPolicy=Local healthCheckNodePort=3xxxx (valid)
+    MW payload: healthCheckNodePort present, externalTrafficPolicy ABSENT
+    MW condition message:
+      Service "ursa-nodeport-localized-template" is invalid: spec.healthCheckNodePort:
+      Invalid value: 3xxxx: may only be set when `type` is 'LoadBalancer' and
+      `externalTrafficPolicy` is 'Local'
+    edge-1: namespace exists, Service NotFound — forever (agent retries same payload)
+    Same yaml that was admitted cleanly in Phase A
+
+
+Snapshot after Step 6:
+
+  bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) \
+    -K ~/.kube/kubeflex -V -Y -L
+
+
+Expected behaviour
+------------------
+  The transform should not produce an object that is illegal by construction.
+  Either strip healthCheckNodePort together with externalTrafficPolicy (it is
+  the dependent, auto-allocated field), or do not strip externalTrafficPolicy.
+  In general the removal list must respect Kubernetes field dependencies.
+
+
+Reset — tear down this repro's objects (fast, ~10 s to propagate)
+-----------------------------------------------------------------
+  export KUBECONFIG=~/.kube/kubeflex
+  kubectl --context wds1 delete bindingpolicy ursa-bp-service-healthchecknodeport-repro --ignore-not-found
+  kubectl --context wds1 delete -f service_seed.yaml --ignore-not-found
+  # Phase A applied the seed DIRECTLY on edge-1 (not KubeStellar-managed) — clear it there too:
+  kubectl --context edge-1 delete -f service_seed.yaml --ignore-not-found
+
+  # verify (NotFound everywhere; only the status addon MW remains):
+  for c in wds1 edge-1 edge-2; do echo "[$c]"; kubectl --context $c get ns ursa-namespace-template 2>&1 | tail -1; done
+  kubectl --context its1 -n edge-1 get manifestworks
