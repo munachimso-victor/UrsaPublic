@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: label-demo
+  labels:
+    app.kubernetes.io/managed-by: label-removal-repro
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-cm
+  namespace: label-demo
+  labels:
+    team: blue
+    remove-me: "yes"
+  annotations:
+    note: hello
+data:
+  k: v

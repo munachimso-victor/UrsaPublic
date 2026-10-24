@@ -1,0 +1,140 @@
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ export KUBECONFIG=~/.kube/repro
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-3 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-1 create cm ctl-cm -n default --from-literal=k=v
+configmap/ctl-cm created
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-1 label cm ctl-cm -n default team=blue remove-me=yes
+  kubectl --context repro-1 annotate cm ctl-cm -n default note=hello
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+configmap/ctl-cm labeled
+configmap/ctl-cm annotated
+labels={"remove-me":"yes","team":"blue"} annotations.note=hello
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-1 label cm ctl-cm -n default team=red --overwrite
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels}'; echo
+configmap/ctl-cm labeled
+labels={"remove-me":"yes","team":"red"}
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-1 label cm ctl-cm -n default remove-me-
+  kubectl --context repro-1 annotate cm ctl-cm -n default note-
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+configmap/ctl-cm unlabeled
+configmap/ctl-cm annotated
+labels={"team":"red"} annotations.note=
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context wds1 apply -f labeldemo_seed.yaml
+  kubectl --context wds1 apply -f labeldemo_policy.yaml
+  sleep 60
+namespace/label-demo created
+configmap/demo-cm created
+bindingpolicy.control.kubestellar.io/label-removal-repro created
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+labels={"remove-me":"yes","team":"blue"} annotations.note=hello
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context wds1 label cm demo-cm -n label-demo team=red --overwrite
+  sleep 60
+configmap/demo-cm labeled
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels}'; echo
+labels={"remove-me":"yes","team":"red"}
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$  kubectl --context wds1 label cm demo-cm -n label-demo remove-me-
+  kubectl --context wds1 annotate cm demo-cm -n label-demo note-
+  kubectl --context wds1 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+
+  sleep 720    # spans two ~5-min agent resyncs
+configmap/demo-cm unlabeled
+configmap/demo-cm annotated
+labels={"team":"red"} annotations.note=
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+labels={"remove-me":"yes","team":"red"} annotations.note=hello
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context wds1 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+labels={"team":"red"} annotations.note=
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ kubectl --context its1 get manifestwork -n repro-2 \
+    -l transport.kubestellar.io/originOwnerReferenceBindingKey=label-removal-repro \
+    -o custom-columns='NAME:.metadata.name,APPLIED:.status.conditions[?(@.type=="Applied")].status,AVAILABLE:.status.conditions[?(@.type=="Available")].status'
+NAME                                                                             APPLIED   AVAILABLE
+e344eef2-6381-4de9-b40a-64ec665723f7-wds1-38d38470-9973-431e-80cb-6fe1eb0ab591   True      True
+e344eef2-6381-4de9-b40a-64ec665723f7-wds1-b4847267-9b61-4d50-8c67-c7c9154a584a   True      True
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$ cd /data/Ursa/manual_tests/label_removal_repro
+bash <(curl -s https://raw.githubusercontent.com/kubestellar/kubestellar/refs/heads/main/scripts/kubestellar-snapshot.sh) -K ~/.kube/repro -V -Y -L
+kubestellar-snapshot.sh v0.3.0
+
+Script run on 2026-10-24_14:36:27
+Checking script dependencies:
+✔ kubectl version v1.37.1 at /usr/local/bin/kubectl
+✔ helm version v3.22.1 at /usr/local/bin/helm
+✔ jq version jq-1.6 at /usr/bin/jq
+✔ yq version yq (https://github.com/mikefarah/yq/) version v4.44.3 at /usr/local/bin/yq
+Creating temporary folder: ./kubestellar-snapshot-rdw0
+Using kubeconfig(s): /users/mvn27/.kube/repro
+Validating contexts(s):
+✔ its1
+✔ kind-repro-hub
+✔ repro-1
+✔ repro-2
+✔ repro-3 *
+✔ wds1
+
+KubeStellar:
+- Helm chart ks-core (v0.29.0) in namespace default in context kind-repro-hub
+  - Secret=sh.helm.release.v1.ks-core.v1 in namespace default
+
+KubeFlex:
+- kubeflex-system namespace in context kind-repro-hub
+- controller-manager: version=0.9.1, pod=kubeflex-controller-manager-6488fcfc67-szvz8, status=running
+- postgres-postgresql-0: pod=postgres-postgresql-0, status=running
+- CRDs:
+  - controlplanes.tenancy.kflex.kubestellar.org: established=true
+  - postcreatehooks.tenancy.kflex.kubestellar.org: established=true
+
+Control Planes:
+- its1: type=vcluster, pch=, context=kind-repro-hub, namespace=its1-system
+  - KubeStellar controller manager: version=, pod= namespace=its1-system, status=
+  - Transport controller: version=, pod= namespace=its1-system, status=
+  - CRDs:
+    - workstatuses.control.kubestellar.io: established=true
+- wds1: type=k8s, pch=, context=kind-repro-hub, namespace=wds1-system
+  - KubeStellar controller manager: version=0.29.0, pod=kubestellar-controller-manager-5fcbcc55fc-v92x9 namespace=wds1-system, status=running
+  - Transport controller: version=0.29.0, pod=transport-controller-549cfc99c6-r29zj namespace=wds1-system, status=running
+  - CRDs:
+    - bindingpolicies.control.kubestellar.io: established=true
+    - bindings.control.kubestellar.io: established=true
+    - combinedstatuses.control.kubestellar.io: established=true
+    - customtransforms.control.kubestellar.io: established=true
+    - statuscollectors.control.kubestellar.io: established=true
+
+Managed Clusters:
+
+Binding Policies:
+
+Bindings:
+
+Manifest Works:
+
+Work Statuses:
+
+Saving logs and/or YAML from ./kubestellar-snapshot-rdw0/kubestellar-snapshot to ./kubestellar-snapshot.tar.gz
+Removing temporary folder: ./kubestellar-snapshot-rdw0
+mvn27@node0:/data/Ursa/manual_tests/label_removal_repro$

@@ -1,0 +1,122 @@
+Manual repro: a label removed on the WDS is never removed on the spokes
+========================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/label_removal_repro/
+
+Sibling of service_edge_drift_repro / pod_image_sync_repro (same setup_kubestellar.sh
+style, cluster names changed: hub kind cluster `repro-hub`, edges `repro-1/2/3`,
+SSL passthrough port 9450, kubeconfig ~/.kube/repro — so this bundle can run next to
+an existing default kubeflex install without touching it).
+
+Goal
+----
+Show that through KubeStellar the hub can ADD a metadata label to a delivered object
+and UPDATE its value on the spokes, but can never REMOVE one (annotations identical):
+
+  - Phase A (control): add / update / remove a label and an annotation DIRECTLY on a
+    plain edge cluster - all three operations work. KubeStellar is not involved.
+  - Phase B: the same three operations from the WDS onto a downsynced ConfigMap:
+      B1 create  -> delivered
+      B2 update  -> delivered (seconds)
+      B3 remove  -> NEVER delivered: the spoke keeps the label and the annotation
+                    past two ~5-min agent resyncs; the ManifestWork stays
+                    Applied=True / Available=True.
+
+Step 1 - host prereqs
+---------------------
+  cd manual_tests/label_removal_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+Step 2 - KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/repro
+  ./setup_kubestellar.sh          # defaults: --name repro --host-name repro-hub --port 9450
+
+  kubectl --context repro-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-3 apply -f fix-klusterlet-rbac.yaml
+
+Step 3 - Phase A: control on a plain edge (repro-1, no KubeStellar)
+-------------------------------------------------------------------
+  kubectl --context repro-1 create cm ctl-cm -n default --from-literal=k=v
+
+  # A1 create a label and an annotation
+  kubectl --context repro-1 label cm ctl-cm -n default team=blue remove-me=yes
+  kubectl --context repro-1 annotate cm ctl-cm -n default note=hello
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+
+  # A2 update the label value
+  kubectl --context repro-1 label cm ctl-cm -n default team=red --overwrite
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels}'; echo
+
+  # A3 delete the label and the annotation
+  kubectl --context repro-1 label cm ctl-cm -n default remove-me-
+  kubectl --context repro-1 annotate cm ctl-cm -n default note-
+  # final check: the label and annotation removed in A3 are gone on the plain cluster
+  kubectl --context repro-1 get cm ctl-cm -n default -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+
+Expected: after A3 the label `remove-me` and the annotation `note` are gone.
+Plain Kubernetes performs all three operations.
+
+Step 4 - Phase B1: create through the hub
+-----------------------------------------
+  kubectl --context wds1 apply -f labeldemo_seed.yaml
+  kubectl --context wds1 apply -f labeldemo_policy.yaml
+  sleep 60
+
+  # what arrived on the spoke after the create
+  kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+
+Expected: labels={"remove-me":"yes","team":"blue"} annotations.note=hello
+The create delivered (the BindingPolicy selects repro-2 only).
+
+Step 5 - Phase B2: update the label value on the hub
+----------------------------------------------------
+  kubectl --context wds1 label cm demo-cm -n label-demo team=red --overwrite
+  sleep 60
+
+  # the spoke after the value update: team is now red
+  kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels}'; echo
+
+Expected: labels={"remove-me":"yes","team":"red"} - the value update delivered
+
+Step 6 - Phase B3: remove the label and the annotation on the hub (THE BUG)
+---------------------------------------------------------------------------
+  kubectl --context wds1 label cm demo-cm -n label-demo remove-me-
+  kubectl --context wds1 annotate cm demo-cm -n label-demo note-
+  # the HUB after the removal: remove-me and note are gone from desired state
+  kubectl --context wds1 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+
+  sleep 720    # spans two ~5-min agent resyncs
+
+  # what the SPOKE actually holds: its label map and the note annotation
+  kubectl --context repro-2 get cm demo-cm -n label-demo -o jsonpath='labels={.metadata.labels} annotations.note={.metadata.annotations.note}'; echo
+  # what the TRANSPORT claims: our delivery envelopes' Applied/Available status on the ITS
+  kubectl --context its1 get manifestwork -n repro-2 \
+    -l transport.kubestellar.io/originOwnerReferenceBindingKey=label-removal-repro \
+    -o custom-columns='NAME:.metadata.name,APPLIED:.status.conditions[?(@.type=="Applied")].status,AVAILABLE:.status.conditions[?(@.type=="Available")].status'
+
+BUG: the WDS shows labels={"team":"red"} and no annotation, while repro-2 still shows
+labels={"remove-me":"yes","team":"red"} annotations.note=hello after 720 s, and the
+ManifestWork reports Applied=True / Available=True. The removal is never delivered and
+nothing reports the difference.
+
+Cleanup
+-------
+  kubectl --context wds1 delete -f labeldemo_policy.yaml
+  kubectl --context wds1 delete -f labeldemo_seed.yaml
+  kubectl --context repro-1 delete cm ctl-cm -n default
+  # or tear everything down:
+  ./setup_kubestellar.sh --cleanup-only
+
+Artifacts in this folder
+------------------------
+  labeldemo_seed.yaml   Namespace label-demo + ConfigMap demo-cm (two labels, one annotation)
+  labeldemo_policy.yaml BindingPolicy selecting the repro-2 cluster
+  sample_log.txt        full console log of phases A and B1-B3 (2026-10-21, v0.29.0,
+                        WDS v1.29.9, edges kind v1.37.0; update delivered in 5 s,
+                        removal still absent after 720 s, MW Applied=True)
+  GITHUB_ISSUE.md       issue text ready to paste

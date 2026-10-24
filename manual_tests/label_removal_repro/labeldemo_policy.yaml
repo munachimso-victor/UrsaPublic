@@ -1,0 +1,12 @@
+apiVersion: control.kubestellar.io/v1alpha1
+kind: BindingPolicy
+metadata:
+  name: label-removal-repro
+spec:
+  clusterSelectors:
+  - matchLabels:
+      name: repro-2
+  downsync:
+  - objectNames:
+    - label-demo
+    - demo-cm
