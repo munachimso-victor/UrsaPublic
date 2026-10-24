@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nodepin-demo
+  labels:
+    app.kubernetes.io/managed-by: nodepin-repro
+---
+# A Pod pinned to a real node of the target cluster (repro-2's control-plane node).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pinned-pod
+  namespace: nodepin-demo
+spec:
+  nodeName: repro-2-control-plane
+  tolerations:
+  - operator: Exists
+  containers:
+  - name: web
+    image: nginx:alpine

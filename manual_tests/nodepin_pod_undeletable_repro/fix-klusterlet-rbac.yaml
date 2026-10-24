@@ -1,0 +1,31 @@
+---
+# Extra ClusterRole for open-cluster-management klusterlet-work-sa on Ursa *test* edges.
+#
+# Default klusterlet RBAC covers most namespaced ManifestWork applies but not every
+# cluster-scoped kind (StorageClass, PV, RuntimeClass, IngressClass, CSIDriver, …).
+# A wildcard rule avoids patching this file each time the catalog adds a new kind.
+#
+# Trade-off: klusterlet-work-sa can manage any API resource on the spoke. Acceptable
+# for isolated kind/Ursa test clusters; do not use this pattern on production spokes
+# without replacing with explicit least-privilege rules.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: klusterlet-infra-manager
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: klusterlet-infra-manager-binding
+subjects:
+- kind: ServiceAccount
+  name: klusterlet-work-sa
+  namespace: open-cluster-management-agent
+roleRef:
+  kind: ClusterRole
+  name: klusterlet-infra-manager
+  apiGroup: rbac.authorization.k8s.io

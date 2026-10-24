@@ -1,0 +1,113 @@
+Manual repro: a Pod pinned to a node of the target cluster can never be deleted through the WDS
+================================================================================================
+
+Self-contained bug submission bundle. All paths below are relative to this folder:
+
+  manual_tests/nodepin_pod_undeletable_repro/
+
+Sibling of label_removal_repro (same setup_kubestellar.sh, cluster names: hub kind
+cluster `repro-hub`, edges `repro-1/2/3`, SSL passthrough port 9450, kubeconfig
+~/.kube/repro, so this bundle can run next to a default kubeflex install).
+
+Goal
+----
+Show that a Pod pinned to a node of the target cluster (spec.nodeName) is delivered
+and runs fine, but can never be deleted through KubeStellar:
+
+  - Phase A (control): the identical pinned Pod created DIRECTLY on the edge deletes
+    in about a second. Kubernetes handles the full lifecycle when the node exists.
+  - Phase B: the same Pod downsynced from the WDS:
+      B1 create -> delivered, Running on the named node
+      B2 delete on the WDS -> kubectl hangs to its timeout; the WDS Pod sits in
+         Terminating forever (deletionTimestamp set, NO finalizers); the
+         ManifestWork is never deleted; the edge keeps running the Pod
+         past two ~5-min agent resyncs
+      B3 the only way out -> kubectl delete --force --grace-period=0 on the WDS;
+         then the MW is deleted and the edge Pod is removed within seconds
+
+Step 1 - host prereqs
+---------------------
+  cd manual_tests/nodepin_pod_undeletable_repro
+  chmod +x install_requirements.sh
+  ./install_requirements.sh
+
+Step 2 - KubeStellar cluster setup
+----------------------------------
+  export KUBECONFIG=~/.kube/repro
+  ./setup_kubestellar.sh          # defaults: --name repro --host-name repro-hub --port 9450
+
+  kubectl --context repro-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-3 apply -f fix-klusterlet-rbac.yaml
+
+Step 3 - Phase A: control, directly on the edge (no KubeStellar)
+----------------------------------------------------------------
+  kubectl --context repro-2 create ns ctl-nodepin
+  sed -e 's/name: pinned-pod/name: ctl-pinned-pod/' -e 's/namespace: nodepin-demo/namespace: ctl-nodepin/' \
+      nodepin_seed.yaml | kubectl --context repro-2 apply -f -
+  sleep 8
+  kubectl --context repro-2 get pod ctl-pinned-pod -n ctl-nodepin -o wide
+
+  time kubectl --context repro-2 delete pod ctl-pinned-pod -n ctl-nodepin --timeout=60s
+  kubectl --context repro-2 delete ns ctl-nodepin --wait=false
+
+Expected: the Pod runs on repro-2-control-plane and the delete completes in ~1 s.
+
+Step 4 - Phase B1: downsync the pinned Pod
+------------------------------------------
+  kubectl --context wds1 apply -f nodepin_seed.yaml
+  kubectl --context wds1 apply -f nodepin_policy.yaml
+  sleep 60
+
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo -o wide
+
+Expected: Running on repro-2-control-plane. Pinning works through KubeStellar.
+
+Step 5 - Phase B2: delete the Pod on the WDS (THE BUG)
+------------------------------------------------------
+  time kubectl --context wds1 delete pod pinned-pod -n nodepin-demo --timeout=60s
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo \
+    -o jsonpath='phase={.status.phase} deletionTimestamp={.metadata.deletionTimestamp} finalizers={.metadata.finalizers}'; echo
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+
+  sleep 720    # spans two ~5-min agent resyncs
+
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo
+  kubectl --context its1 get manifestwork -n repro-2 -o json | \
+    python3 -c "import json,sys;[print(w['metadata']['name'],'deletionTimestamp=',w['metadata'].get('deletionTimestamp'),[(c['type'],c['status']) for c in w.get('status',{}).get('conditions',[])]) for w in json.load(sys.stdin)['items'] if 'nodepin' in str(w.get('spec'))]"
+
+BUG: the delete hangs to kubectl's timeout ("timed out waiting for the condition");
+the WDS Pod shows Terminating with deletionTimestamp set and NO finalizers, and is
+still Terminating after 720 s; the edge Pod is still Running; the ManifestWorks have
+no deletion mark and report Applied=True / Available=True. The delete is accepted,
+nothing completes, nothing reports an error.
+
+Step 6 - Phase B3: the only way out
+-----------------------------------
+  time kubectl --context wds1 delete pod pinned-pod -n nodepin-demo --force --grace-period=0
+  sleep 30
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo
+
+Expected: the force delete returns immediately; within seconds the ManifestWork is
+deleted and the edge Pod is removed. Everything downstream worked all along; only
+the WDS-side graceful deletion can never complete.
+
+Cleanup
+-------
+  kubectl --context wds1 delete -f nodepin_policy.yaml
+  kubectl --context wds1 delete ns nodepin-demo --wait=false
+  # or tear everything down:
+  ./setup_kubestellar.sh --cleanup-only
+
+Artifacts in this folder
+------------------------
+  nodepin_seed.yaml     Namespace nodepin-demo + Pod pinned-pod (spec.nodeName:
+                        repro-2-control-plane, the target cluster's real node)
+  nodepin_policy.yaml   BindingPolicy selecting the repro-2 cluster
+  sample_log.txt        full console log of phases A and B1-B3 (2026-10-21/22,
+                        v0.29.0, WDS v1.29.9, edges kind v1.37.0; control delete
+                        1.0 s; WDS delete still Terminating at 720 s, edge Running,
+                        MW green; force delete clears hub, MW and edge in <30 s)
+  GITHUB_ISSUE.md       issue text ready to paste

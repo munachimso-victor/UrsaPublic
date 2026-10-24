@@ -1,0 +1,93 @@
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$ kubectl --context repro-1 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-2 apply -f fix-klusterlet-rbac.yaml
+  kubectl --context repro-3 apply -f fix-klusterlet-rbac.yaml
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+clusterrole.rbac.authorization.k8s.io/klusterlet-infra-manager unchanged
+clusterrolebinding.rbac.authorization.k8s.io/klusterlet-infra-manager-binding unchanged
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$ kubectl --context repro-2 create ns ctl-nodepin
+  sed -e 's/name: pinned-pod/name: ctl-pinned-pod/' -e 's/namespace: nodepin-demo/namespace: ctl-nodepin/' \
+      nodepin_seed.yaml | kubectl --context repro-2 apply -f -
+  sleep 8
+  kubectl --context repro-2 get pod ctl-pinned-pod -n ctl-nodepin -o wide
+
+  time kubectl --context repro-2 delete pod ctl-pinned-pod -n ctl-nodepin --timeout=60s
+  kubectl --context repro-2 delete ns ctl-nodepin --wait=false
+namespace/ctl-nodepin created
+namespace/nodepin-demo created
+pod/ctl-pinned-pod created
+NAME             READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+ctl-pinned-pod   1/1     Running   0          8s    10.244.0.14   repro-2-control-plane   <none>           <none>
+pod "ctl-pinned-pod" deleted from ctl-nodepin namespace
+
+real    0m1.005s
+user    0m0.130s
+sys     0m0.015s
+namespace "ctl-nodepin" deleted
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$ kubectl --context wds1 apply -f nodepin_seed.yaml
+  kubectl --context wds1 apply -f nodepin_policy.yaml
+  sleep 60
+
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo -o wide
+namespace/nodepin-demo created
+pod/pinned-pod created
+bindingpolicy.control.kubestellar.io/nodepin-repro created
+NAME         READY   STATUS    RESTARTS   AGE   IP            NODE                    NOMINATED NODE   READINESS GATES
+pinned-pod   1/1     Running   0          57s   10.244.0.15   repro-2-control-plane   <none>           <none>
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$ time kubectl --context wds1 delete pod pinned-pod -n nodepin-demo --timeout=60s
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo \
+    -o jsonpath='phase={.status.phase} deletionTimestamp={.metadata.deletionTimestamp} finalizers={.metadata.finalizers}'; echo
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+
+  sleep 720    # spans two ~5-min agent resyncs
+
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo
+  kubectl --context its1 get manifestwork -n repro-2 -o json | \
+    python3 -c "import json,sys;[print(w['metadata']['name'],'deletionTimestamp=',w['metadata'].get('deletionTimestamp'),[(c['type'],c['status']) for c in w.get('status',{}).get('conditions',[])]) for w in json.load(sys.stdin)['items'] if 'nodepin' in str(w.get('spec'))]"
+pod "pinned-pod" deleted from nodepin-demo namespace
+error: timed out waiting for the condition on pods/pinned-pod
+
+real    1m0.102s
+user    0m0.114s
+sys     0m0.049s
+phase=Pending deletionTimestamp=2026-10-24T21:33:26Z finalizers=
+NAME         READY   STATUS        RESTARTS   AGE
+pinned-pod   0/1     Terminating   0          6m45s
+NAME         READY   STATUS        RESTARTS   AGE
+pinned-pod   0/1     Terminating   0          18m
+NAME         READY   STATUS    RESTARTS   AGE
+pinned-pod   1/1     Running   0          18m
+43160fc3-8ada-49ee-93f2-bda713a13744-wds1-ff8f9b68-b5e7-4896-8fdc-64a16c8b1e03 deletionTimestamp= None [('Applied', 'True'), ('Available', 'True')]
+43160fc3-8ada-49ee-93f2-bda713a13744-wds1-191c4e64-a123-47dd-aaf0-e4e020f63926 deletionTimestamp= None [('Applied', 'True'), ('Available', 'True')]
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$ time kubectl --context wds1 delete pod pinned-pod -n nodepin-demo --force --grace-period=0
+  sleep 30
+  kubectl --context wds1 get pod pinned-pod -n nodepin-demo
+  kubectl --context repro-2 get pod pinned-pod -n nodepin-demo
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "pinned-pod" force deleted from nodepin-demo namespace
+
+real    0m0.104s
+user    0m0.111s
+sys     0m0.026s
+Error from server (NotFound): pods "pinned-pod" not found
+Error from server (NotFound): pods "pinned-pod" not found
+mvn27@node0:/data/Ursa/manual_tests/nodepin_pod_undeletable_repro$
