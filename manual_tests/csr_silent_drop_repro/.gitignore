@@ -1,0 +1,8 @@
+sa.key
+sa.pub
+tokens.csv
+csr_test.yaml
+req.key
+req.csr
+kubeconfig
+csr.yaml

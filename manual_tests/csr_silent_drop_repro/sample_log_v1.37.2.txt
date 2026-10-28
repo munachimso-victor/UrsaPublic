@@ -1,0 +1,64 @@
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ export V=v1.37.2
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ openssl genrsa -out sa.key 2048
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ openssl rsa -in sa.key -pubout -out sa.pub
+writing RSA key
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ echo 'testtoken,admin,1000,"system:masters"' > tokens.csv
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ kubectl config --kubeconfig=kubeconfig set-cluster t --server=https://127.0.0.1:16443 --insecure-skip-tls-verify=true
+  kubectl config --kubeconfig=kubeconfig set-credentials t --token=testtoken
+  kubectl config --kubeconfig=kubeconfig set-context t --cluster=t --user=t
+  kubectl config --kubeconfig=kubeconfig use-context t
+Cluster "t" set.
+User "t" set.
+Context "t" created.
+Switched to context "t".
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ export KUBECONFIG=$PWD/kubeconfig
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ openssl req -new -newkey rsa:2048 -nodes -keyout req.key -subj "/CN=csr-drop-test" -out req.csr
+...+....+..+.+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.........+....+...+..+.+..+....+...+......+.....+....+.....+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+....+...........+....+..+...+.+.........+............+...+...+..+.+..+..........+..................+..............+............+.+........+.......+...+...............+..............+.+..+...+......+....+...........+...+.+.....+....+...+.....+...+....+..................+.........+...+...........+.......+...+..+.........+.+...+......+.....+.+..+...+....+.....+..........+.....+.+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+...+...+........+.+.....+...+......+.......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*..+..+...+.+.....+.........+.+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*.....+...+...+....+............+........+......+.+........+.......+...+......+..+..........+...+...........+...+...+.............+.....+......+...+.+.....+......+.+.....+...............+.......+......+..+...+......+.+.....+............+...+..........+...+............+........+.+..............+.+......+.....+...+......+.........................+.....+..........+..............+......+....+.....+..........+.....+....+.....+......+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+-----
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ printf 'apiVersion: certificates.k8s.io/v1\nkind: CertificateSigningRequest\nmetadata:\n  name: csr-silent-drop-test\nspec:\n  request: %s\n  signerName: kubernetes.io/kube-apiserver-client\n  expirationSeconds: 86400\n  usages:\n  - client auth\n' "$(base64 -w0 req.csr)" > csr.yaml
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ docker run -d --name csr-etcd --network host registry.k8s.io/etcd:3.6.4-0 etcd \
+    --advertise-client-urls=http://127.0.0.1:12379 --listen-client-urls=http://127.0.0.1:12379 \
+    --listen-peer-urls=http://127.0.0.1:12380 --data-dir=/tmp/etcd
+8e0f54fc20f0d9bfbd17baa8ddd3955853657233f43585a0ed10b9ded932850a
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ docker run -d --name csr-apiserver --network host -v $PWD:/keys:ro \
+    registry.k8s.io/kube-apiserver:$V kube-apiserver \
+    --etcd-servers=http://127.0.0.1:12379 --secure-port=16443 --authorization-mode=AlwaysAllow \
+    --token-auth-file=/keys/tokens.csv --service-account-issuer=https://kubernetes.default.svc \
+    --service-account-key-file=/keys/sa.pub --service-account-signing-key-file=/keys/sa.key \
+    --service-cluster-ip-range=10.96.0.0/16
+70ee9399b16de24f47d4c7ecdee308fd20a0efe4d4ade208e2a3e385aa55678b
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ until kubectl get --raw /healthz >/dev/null 2>&1; do sleep 2; done; kubectl version
+Client Version: v1.37.1
+Kustomize Version: v5.8.1
+Server Version: v1.37.2
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ kubectl apply -f csr.yaml
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+  # -> 86400
+certificatesigningrequest.certificates.k8s.io/csr-silent-drop-test created
+86400
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ kubectl patch csr csr-silent-drop-test --type json -p '[{"op":"replace","path":"/spec/expirationSeconds","value":3600}]'
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+certificatesigningrequest.certificates.k8s.io/csr-silent-drop-test patched (no change)
+86400
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ sed 's/expirationSeconds: 86400/expirationSeconds: 3600/' csr.yaml | kubectl apply -f -
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+ 
+certificatesigningrequest.certificates.k8s.io/csr-silent-drop-test configured
+86400
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ kubectl get csr csr-silent-drop-test -o yaml | sed 's/expirationSeconds: 86400/expirationSeconds: 3600/' | kubectl replace -f -
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+certificatesigningrequest.certificates.k8s.io/csr-silent-drop-test replaced
+86400
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ kubectl create -f - <<< '{"apiVersion":"networking.k8s.io/v1","kind":"IngressClass","metadata":{"name":"contrast"},"spec":{"controller":"example.com/a"}}'
+  kubectl patch ingressclass contrast --type merge -p '{"spec":{"controller":"example.com/b"}}'
+ingressclass.networking.k8s.io/contrast created
+The IngressClass "contrast" is invalid: spec.controller: Invalid value: "example.com/b": field is immutable
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ 
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ 
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ 
+mvn27@node0:/data/Ursa/manual_tests/csr_silent_drop_repro$ docker rm -f csr-etcd csr-apiserver
+  rm -f sa.key sa.pub tokens.csv kubeconfig req.key req.csr csr.yaml
+  unset KUBECONFIG
+csr-etcd
+csr-apiserver

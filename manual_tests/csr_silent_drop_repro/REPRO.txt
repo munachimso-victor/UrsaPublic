@@ -1,0 +1,125 @@
+Manual repro: CertificateSigningRequest spec updates report success but are silently discarded
+==============================================================================================
+
+We test against kube-apiserver directly (plus the etcd it needs) rather than a
+kind cluster, for two reasons:
+  1. The bug is in kube-apiserver alone (its update path), so no other
+     component (nodes, controllers, scheduler) plays any part.
+  2. We need to test the 1.38 pre-releases, which carry the merged fix
+     (#142354), and kind has no node images for them yet. The upstream
+     kube-apiserver images (registry.k8s.io) exist for every alpha.
+
+So the testbed is two plain containers, etcd and kube-apiserver, at the version
+under test. Needs only docker, kubectl and openssl. 
+
+Step 0 - pick the version
+--------------------------
+  # everything runs from this folder: the log lands here, and step 2 mounts it
+  # ($PWD) into the apiserver container to read the step-1 files
+  cd /data/Ursa/manual_tests/csr_silent_drop_repro
+
+  export V=v1.37.2            # newest released version: BUG PRESENT
+  export V=v1.38.0-alpha.3  # newest 1.38 build, carries PR #142354: BUG STILL PRESENT
+
+
+Step 1 - key material, kubeconfig and the CSR to test with
+----------------------------------------------------------
+Starts nothing. Writes the files the later steps read. Each file's purpose is
+stated right before the command that writes it.
+
+  # sa.key - a private key the apiserver uses to SIGN ServiceAccount tokens
+  # (the credentials Kubernetes hands to Pods). kube-apiserver will not start
+  # without one. This test never uses ServiceAccount tokens, so any freshly
+  # generated key works; it is deleted in step 6.
+  openssl genrsa -out sa.key 2048
+
+  # sa.pub - the matching public key, which the apiserver uses to VERIFY
+  # those tokens. Also required at startup, also unused by the test.
+  openssl rsa -in sa.key -pubout -out sa.pub
+
+  # tokens.csv - the apiserver's list of accepted login tokens. One line: the
+  # token "testtoken" logs in as user "admin" in group system:masters (full
+  # rights). kubectl logs in with it.
+  echo 'testtoken,admin,1000,"system:masters"' > tokens.csv
+
+  # kubeconfig - tells kubectl where the apiserver is (127.0.0.1:16443, no TLS
+  # check: it uses a self-signed certificate) and to log in with "testtoken".
+  kubectl config --kubeconfig=kubeconfig set-cluster t --server=https://127.0.0.1:16443 --insecure-skip-tls-verify=true
+  kubectl config --kubeconfig=kubeconfig set-credentials t --token=testtoken
+  kubectl config --kubeconfig=kubeconfig set-context t --cluster=t --user=t
+  kubectl config --kubeconfig=kubeconfig use-context t
+
+  # point kubectl in this shell at the test apiserver (not your usual cluster):
+  export KUBECONFIG=$PWD/kubeconfig
+
+  # req.key + req.csr - a key and a certificate signing request (PKCS#10) for a
+  # made-up client "csr-drop-test"; the CSR object below carries req.csr.
+  openssl req -new -newkey rsa:2048 -nodes -keyout req.key -subj "/CN=csr-drop-test" -out req.csr
+
+  # csr.yaml - the CertificateSigningRequest object, created with
+  # spec.expirationSeconds: 86400 (one day). That is the field we will try to change.
+  printf 'apiVersion: certificates.k8s.io/v1\nkind: CertificateSigningRequest\nmetadata:\n  name: csr-silent-drop-test\nspec:\n  request: %s\n  signerName: kubernetes.io/kube-apiserver-client\n  expirationSeconds: 86400\n  usages:\n  - client auth\n' "$(base64 -w0 req.csr)" > csr.yaml
+
+Step 2 - start etcd and the apiserver
+-------------------------------------
+  # etcd - the database every Kubernetes object is stored in. Listens on
+  # 127.0.0.1:12379; its data lives inside the container and is gone after step 6.
+  docker run -d --name csr-etcd --network host registry.k8s.io/etcd:3.6.4-0 etcd \
+    --advertise-client-urls=http://127.0.0.1:12379 --listen-client-urls=http://127.0.0.1:12379 \
+    --listen-peer-urls=http://127.0.0.1:12380 --data-dir=/tmp/etcd
+
+  # kube-apiserver - the component under test, at version $V. It reads this
+  # folder (mounted as /keys) for the step-1 files: tokens.csv for logins,
+  # sa.pub + sa.key because it refuses to start without them. Port 16443,
+  # stores into the etcd above, allows every request.
+  docker run -d --name csr-apiserver --network host -v $PWD:/keys:ro \
+    registry.k8s.io/kube-apiserver:$V kube-apiserver \
+    --etcd-servers=http://127.0.0.1:12379 --secure-port=16443 --authorization-mode=AlwaysAllow \
+    --token-auth-file=/keys/tokens.csv --service-account-issuer=https://kubernetes.default.svc \
+    --service-account-key-file=/keys/sa.pub --service-account-signing-key-file=/keys/sa.key \
+    --service-cluster-ip-range=10.96.0.0/16
+
+  # wait until it answers (a few seconds), then show the version under test:
+  until kubectl get --raw /healthz >/dev/null 2>&1; do sleep 2; done; kubectl version
+
+Step 3 - create the CSR
+-----------------------
+  kubectl apply -f csr.yaml
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+  # -> 86400
+
+Step 4 - change expirationSeconds to 3600, three ways
+-----------------------------------------------------
+Each command reports success; the read after each shows the stored value.
+
+  # 4a. JSON patch:
+  kubectl patch csr csr-silent-drop-test --type json -p '[{"op":"replace","path":"/spec/expirationSeconds","value":3600}]'
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+  # -> "patched (no change)", value 86400
+
+  # 4b. kubectl apply of the same manifest with 3600:
+  sed 's/expirationSeconds: 86400/expirationSeconds: 3600/' csr.yaml | kubectl apply -f -
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+  # -> "configured", value 86400
+
+  # 4c. full replace (PUT) of the stored object with 3600:
+  kubectl get csr csr-silent-drop-test -o yaml | sed 's/expirationSeconds: 86400/expirationSeconds: 3600/' | kubectl replace -f -
+  kubectl get csr csr-silent-drop-test -o jsonpath='{.spec.expirationSeconds}{"\n"}'
+  # -> "replaced", value 86400
+
+  # THE BUG: three success messages, and the change was discarded every time.
+
+Step 5 - contrast: a kind that rejects an immutable change properly
+-------------------------------------------------------------------
+IngressClass's spec.controller is also immutable. Changing it is REJECTED with
+an error, which is the behaviour the API conventions ask for.
+
+  kubectl create -f - <<< '{"apiVersion":"networking.k8s.io/v1","kind":"IngressClass","metadata":{"name":"contrast"},"spec":{"controller":"example.com/a"}}'
+  kubectl patch ingressclass contrast --type merge -p '{"spec":{"controller":"example.com/b"}}'
+  # -> The IngressClass "contrast" is invalid: spec.controller: Invalid value: "example.com/b": field is immutable
+
+Step 6 - cleanup
+----------------
+  docker rm -f csr-etcd csr-apiserver
+  rm -f sa.key sa.pub tokens.csv kubeconfig req.key req.csr csr.yaml
+  unset KUBECONFIG
